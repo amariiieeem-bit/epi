@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>EpiCare — Prototype progress report</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm 16mm 15mm; }
+  :root { --ink:#0f1b2d; --ink2:#46546a; --ink3:#7a8699; --line:#dfe4ec; --brand:#0e7490; --brand2:#0b2a4a;
+          --done:#15803d; --doneb:#e7f6ec; --part:#b45309; --partb:#fdf1e2; --todo:#9f1239; --todob:#fde8ee; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", Calibri, Arial, sans-serif; color: var(--ink); font-size: 10.3pt; line-height: 1.45; margin: 0; }
+  h1 { font-size: 21pt; margin: 0 0 2px; color: var(--brand2); letter-spacing: -.01em; }
+  h2 { font-size: 13.5pt; margin: 20px 0 8px; color: var(--brand2); border-bottom: 2px solid var(--brand); padding-bottom: 3px; break-after: avoid; }
+  h3 { font-size: 11pt; margin: 14px 0 6px; break-after: avoid; }
+  p { margin: 0 0 7px; }
+  .sub { color: var(--ink2); font-size: 10.5pt; margin-bottom: 14px; }
+  .lead { background: #eef6f8; border-left: 4px solid var(--brand); padding: 10px 13px; border-radius: 4px; margin: 10px 0 4px; }
+  .lead p:last-child { margin: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0 8px; font-size: 9.6pt; }
+  tr { break-inside: avoid; }
+  th { text-align: left; background: #f2f5f9; color: var(--ink2); font-weight: 600; padding: 5px 7px; border-bottom: 1px solid var(--line); }
+  td { padding: 5px 7px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .tag { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 8.6pt; font-weight: 650; white-space: nowrap; }
+  .done { background: var(--doneb); color: var(--done); }
+  .part { background: var(--partb); color: var(--part); }
+  .todo { background: var(--todob); color: var(--todo); }
+  ul, ol { margin: 0 0 8px; padding-left: 19px; }
+  li { margin-bottom: 3px; }
+  .note { font-size: 9.2pt; color: var(--ink2); }
+  .warn { background: var(--partb); border-left: 4px solid var(--part); padding: 8px 12px; border-radius: 4px; margin: 8px 0; font-size: 9.6pt; break-inside: avoid; }
+  .shots { display: flex; gap: 14px; justify-content: center; margin: 8px 0 4px; break-inside: avoid; }
+  .shots figure { margin: 0; width: 48%; text-align: center; }
+  .shots img { width: 100%; height: 300px; object-fit: cover; object-position: top; border-radius: 10px; border: 1px solid var(--line); }
+  figcaption { font-size: 8.8pt; color: var(--ink2); margin-top: 4px; }
+  .diagram { margin: 6px 0 2px; break-inside: avoid; }
+  .decision { border: 1px solid var(--line); border-radius: 6px; padding: 9px 12px; margin: 8px 0; break-inside: avoid; }
+  .decision b.q { color: var(--brand2); }
+  .reco { color: var(--done); font-weight: 600; }
+  code { font-family: Consolas, monospace; font-size: 8.9pt; background: #f2f5f9; padding: 0 3px; border-radius: 3px; }
+  .pb { break-before: page; }
+  .small td, .small th { font-size: 9.1pt; }
+</style>
+</head>
+<body>
+
+<h1>EpiCare — Prototype progress report</h1>
+<div class="sub">26 November 2026 · watch + phone + app, Branches 1 and 2</div>
+
+<div class="lead">
+  <p><b>Both models are coded and tested; the whole live chain is still missing.</b> Branch 1 (seizure risk forecasting) and Branch 2 (convulsive seizure detection) run end to end, but only on synthetic data so far. The app shows their results without receiving any live data.</p>
+  <p>Four things remain to finish the prototype: <b>the watch</b>, <b>the Bluetooth link</b>, <b>live detection on the phone</b> and <b>the alert to caregivers</b>. Meanwhile, the real model results are computed on a computer.</p>
+</div>
+
+<h2>1. The target prototype, and what already exists</h2>
+<div class="diagram">
+<svg viewBox="0 0 720 300" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Calibri, Arial" font-size="11">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#46546a"/></marker>
+  </defs>
+  <rect x="10" y="40" width="150" height="132" rx="10" fill="#fde8ee" stroke="#9f1239"/>
+  <text x="85" y="62" text-anchor="middle" font-weight="700" font-size="12.5" fill="#0f1b2d">Watch</text>
+  <text x="85" y="82" text-anchor="middle" fill="#46546a">accelerometer 32 Hz</text>
+  <text x="85" y="97" text-anchor="middle" fill="#46546a">heart rate</text>
+  <text x="85" y="112" text-anchor="middle" fill="#46546a">vibration, screen</text>
+  <text x="85" y="127" text-anchor="middle" fill="#46546a">countdown + Cancel</text>
+  <text x="85" y="158" text-anchor="middle" font-weight="700" fill="#9f1239">To do</text>
+  <line x1="160" y1="106" x2="248" y2="106" stroke="#46546a" stroke-width="1.6" marker-end="url(#a)"/>
+  <text x="204" y="97" text-anchor="middle" fill="#0f1b2d" font-weight="600">Bluetooth</text>
+  <text x="204" y="122" text-anchor="middle" fill="#9f1239" font-weight="600">to do</text>
+  <rect x="250" y="10" width="250" height="282" rx="12" fill="#f7f9fc" stroke="#0e7490" stroke-width="1.4"/>
+  <text x="375" y="31" text-anchor="middle" font-weight="700" font-size="12.5" fill="#0f1b2d">Phone · patient app</text>
+  <rect x="264" y="44" width="222" height="44" rx="7" fill="#fdf1e2" stroke="#b45309"/>
+  <text x="275" y="62" font-weight="650" fill="#0f1b2d">Branch 2 · live detector</text>
+  <text x="275" y="78" fill="#b45309">model ready · not yet on the phone</text>
+  <rect x="264" y="96" width="222" height="44" rx="7" fill="#fdf1e2" stroke="#b45309"/>
+  <text x="275" y="114" font-weight="650" fill="#0f1b2d">Branch 1 · today's risk</text>
+  <text x="275" y="130" fill="#b45309">computed on PC, displayed · not live</text>
+  <rect x="264" y="148" width="222" height="44" rx="7" fill="#e7f6ec" stroke="#15803d"/>
+  <text x="275" y="166" font-weight="650" fill="#0f1b2d">Screens: risk, trends, cycles</text>
+  <text x="275" y="182" fill="#15803d">done (Expo Go) · Detection tab done</text>
+  <rect x="264" y="200" width="222" height="44" rx="7" fill="#fde8ee" stroke="#9f1239"/>
+  <text x="275" y="218" font-weight="650" fill="#0f1b2d">Alert, contacts, diary, export</text>
+  <text x="275" y="234" fill="#9f1239">to do</text>
+  <text x="375" y="276" text-anchor="middle" fill="#46546a" font-size="10.5">prior: log(r / r̄) capped at ±1 → detector</text>
+  <line x1="500" y1="222" x2="568" y2="222" stroke="#46546a" stroke-width="1.6" marker-end="url(#a)"/>
+  <text x="534" y="213" text-anchor="middle" fill="#0f1b2d" font-weight="600">push / SMS</text>
+  <text x="534" y="239" text-anchor="middle" fill="#46546a">+ GPS</text>
+  <rect x="570" y="186" width="140" height="74" rx="10" fill="#fde8ee" stroke="#9f1239"/>
+  <text x="640" y="207" text-anchor="middle" font-weight="700" font-size="12.5" fill="#0f1b2d">Caregivers</text>
+  <text x="640" y="224" text-anchor="middle" fill="#46546a">contact 1, then 2…</text>
+  <text x="640" y="248" text-anchor="middle" font-weight="700" fill="#9f1239">To do</text>
+  <rect x="570" y="30" width="140" height="110" rx="10" fill="#fdf1e2" stroke="#b45309"/>
+  <text x="640" y="51" text-anchor="middle" font-weight="700" font-size="12.5" fill="#0f1b2d">Computer</text>
+  <text x="640" y="69" text-anchor="middle" fill="#46546a">model training</text>
+  <text x="640" y="84" text-anchor="middle" fill="#46546a">SeizeIT2 (Branch 2)</text>
+  <text x="640" y="99" text-anchor="middle" fill="#46546a">My Seizure Gauge (B1)</text>
+  <text x="640" y="120" text-anchor="middle" font-weight="700" fill="#b45309">Code ready</text>
+  <text x="640" y="134" text-anchor="middle" font-weight="700" fill="#b45309">real data in progress</text>
+  <line x1="570" y1="85" x2="502" y2="85" stroke="#46546a" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#a)"/>
+  <text x="536" y="76" text-anchor="middle" fill="#46546a" font-size="10">models</text>
+</svg>
+</div>
+<p class="note">Green: done. Orange: coded but not yet run on real data, or not yet live. Red: not started. The watch sends its data to the phone, which detects the seizure, starts the countdown on the watch, then alerts the caregivers. Seizures confirmed by the patient flow back into Branch 1.</p>
+
+<h2>2. Where we stand, part by part</h2>
+<table>
+  <tr><th style="width:24%">Part</th><th style="width:13%">Status</th><th>Details</th></tr>
+  <tr><td>Branch 1 · risk forecasting</td><td><span class="tag part">Coded</span></td><td>Seizure probability over 1 h and 24 h, personal cycles, calibration. Tested on synthetic data; the real My Seizure Gauge archive has not been processed on this PC yet.</td></tr>
+  <tr><td>Branch 2 · detection</td><td><span class="tag part">Coded</span></td><td>Full pipeline (SeizeIT2 reading, signal processing, models, decision, evaluation). Real data format checked. Real data downloading.</td></tr>
+  <tr><td>Branch 1 → Branch 2 link</td><td><span class="tag done">Done</span></td><td>The risk shifts the detector threshold, capped at ±1. Simulation from the report (§7) and wrist test on Branch 1's patients.</td></tr>
+  <tr><td>App · results screens</td><td><span class="tag done">Done</span></td><td>Today, Trends, Cycles, Reliability, Detection. Runs in Expo Go, offline.</td></tr>
+  <tr><td>App · live data and alerts</td><td><span class="tag todo">To do</span></td><td>Bluetooth reception, live detector, countdown, caregiver alert, seizure diary, contacts.</td></tr>
+  <tr><td>Watch</td><td><span class="tag todo">To do</span></td><td>Hardware choice, watch firmware (sensors, Bluetooth, vibration, Cancel button).</td></tr>
+  <tr><td>"Everyday movement" recordings</td><td><span class="tag todo">To do</span></td><td>Brushing teeth, clapping, running, shaking a bottle, bus… on the wrist. The CSV format is ready.</td></tr>
+</table>
+
+<h2>3. Branch 2: what has been done</h2>
+<p>The <code>branch2/</code> folder follows the layout of <code>branch1/</code>: a Python package, 10 automated tests and a command line.</p>
+<table class="small">
+  <tr><th style="width:27%">Step (report §5)</th><th>What the code does</th></tr>
+  <tr><td>Data</td><td>Reads SeizeIT2 (BIDS, EDF) with no external library; downloads directly from OpenNeuro and resumes automatically.</td></tr>
+  <tr><td>Signal</td><td>Resampling to 32 Hz, magnitude, gravity removed, 10 s windows with 50 % overlap; heart rate extracted from the ECG.</td></tr>
+  <tr><td>Models</td><td>Baseline: random forest on hand-made features (dominant frequency, 2–8 Hz power, regularity, energy, heart-rate change). Main: small 1D convolutional network, with or without heart rate, exportable to the watch (ONNX).</td></tr>
+  <tr><td>Decision</td><td>A seizure is declared after 15–20 s of consecutive positive windows; one alert per episode; at most 3 alerts per hour.</td></tr>
+  <tr><td>Evaluation</td><td>Split by patient, never by window; threshold tuned only on training patients. Metrics: seizures detected, false alarms per day, delay.</td></tr>
+  <tr><td>Fusion with Branch 1</td><td>The detector runs on the wrist data (Empatica E4) of Branch 1's patients, with their hourly risk as the prior. Results go to the app's Detection tab.</td></tr>
+</table>
+
+<h3>What the real data taught us</h3>
+<table class="small">
+  <tr><th style="width:27%">Finding</th><th>Consequence</th></tr>
+  <tr><td>57 convulsive seizures in 38 patients (out of 886 seizures, 125 patients)</td><td>Few examples: the model must stay simple, and we download only these 38 patients first (19 GB out of 126 GB).</td></tr>
+  <tr><td>The SeizeIT2 sensor is on the chest and neck, at 25 Hz, not on the wrist</td><td>The model must be checked, and probably adjusted, on wrist data: the E4 from My Seizure Gauge and our watch.</td></tr>
+  <tr><td>The files say "g" but read 0.50 g at rest instead of 1 g</td><td>Fixed: automatic calibration on gravity. Without it, the model would not have worked on a watch.</td></tr>
+  <tr><td>On a real seizure (patient sub-015): movement energy × 25, weak rhythm on the chest; ECG unreadable during the seizure, then heart rate +29 bpm</td><td>The detector will rely mostly on energy and heart rate. The rhythm should be clearer on the wrist.</td></tr>
+  <tr><td>258 hyperkinetic seizures (strong movement, but not convulsive)</td><td>They count neither as detections nor as false alarms.</td></tr>
+</table>
+
+<div class="warn"><b>Read with caution.</b> On synthetic data, the detector finds 6 seizures out of 7, with no false alarm and an 18 s delay. These numbers only show that the code works, not that the detector is good. The real numbers will come from SeizeIT2 (milestone M2 in the report). Likewise, the drop in false alarms thanks to the forecast, shown in the app, is computed on synthetic data.</div>
+
+<h2>4. The app today</h2>
+<div class="shots">
+  <figure><img src="app-home.png" alt="Today tab"><figcaption>Today: risk over the next 24 hours (Branch 1)</figcaption></figure>
+  <figure><img src="app-detect.png" alt="Detection tab"><figcaption>Detection: alerts and the forecast's contribution (Branches 1 + 2)</figcaption></figure>
+</div>
+<p class="note">Screenshots on synthetic data (yellow banner); the app's interface is in French. The app reads a results file produced on a computer; it does not receive any sensor data yet.</p>
+
+<h2>5. What remains to finish the prototype</h2>
+<table class="small">
+  <tr><th style="width:4%">#</th><th style="width:36%">Task</th><th style="width:20%">Role (report)</th><th>Note</th></tr>
+  <tr><td>1</td><td><b>Choose the watch</b></td><td>Whole team</td><td>Decides everything else (see section 6).</td></tr>
+  <tr><td>2</td><td>Watch firmware: sensors at 32 Hz, Bluetooth streaming, vibration, countdown, Cancel button</td><td>App and alert chain</td><td>With a T-Watch: C++ (Arduino or ESP-IDF).</td></tr>
+  <tr><td>3</td><td>Bluetooth in the app</td><td>App and alert chain</td><td><b>Expo Go does not support Bluetooth</b>: a development build is needed (EAS, free) with <code>react-native-ble-plx</code>.</td></tr>
+  <tr><td>4</td><td>Live detector on the phone</td><td>Branch 2 + App</td><td>Port the features to JavaScript and export the model. On the watch later, if it can handle it.</td></tr>
+  <tr><td>5</td><td>Alert chain: countdown, message to the caregiver with GPS, next contact if no answer, new alert after long stillness</td><td>App and alert chain</td><td>On iPhone, an app cannot send an SMS by itself: a small server is needed (Firebase + SMS service) or a push notification to the caregiver.</td></tr>
+  <tr><td>6</td><td>Missing screens: contacts and settings, seizure diary (confirm or reject each alert), export for the doctor</td><td>App</td><td>Confirmed seizures feed Branch 1; false alarms become negative examples for Branch 2.</td></tr>
+  <tr><td>7</td><td>Real Branch 2 results on SeizeIT2 (milestone M2), then the convolutional network (M4)</td><td>Branch 2 + Data</td><td>Download in progress (about 14 h); PyTorch to install for the network.</td></tr>
+  <tr><td>8</td><td>Real Branch 1 results on My Seizure Gauge</td><td>Branch 1 + Data</td><td>Download at least one archive (3.3 GB for patient 1869).</td></tr>
+  <tr><td>9</td><td>Record everyday movements <b>with our watch</b></td><td>Branch 2</td><td>Best test against false alarms; also used to adjust the model to the wrist.</td></tr>
+  <tr><td>10</td><td>Final fusion (milestone M5): real Branch 2 results on the wrist, with Branch 1's real risk</td><td>Whole team</td><td>Code ready (<code>python -m epicare_b2 fuse</code>).</td></tr>
+  <tr><td>11</td><td>Demo rehearsal, report, presentation (M6)</td><td>Whole team</td><td>See the scenario below.</td></tr>
+</table>
+
+<h2>6. Decisions to make together</h2>
+<div class="decision">
+  <b class="q">Build our own watch or buy one?</b>
+  <ul>
+    <li><b>Build</b> from a ready-made board, for example the LilyGO T-Watch S3 (ESP32-S3, about €40): accelerometer, Bluetooth, screen, vibration motor and battery already built in. It is truly "our watch", but we must write its firmware. For heart rate, add an optical sensor (MAX30102 type).</li>
+    <li><b>Buy</b> a Wear OS watch: reliable sensors and heart rate, but it needs a watch app, and it is not our hardware.</li>
+  </ul>
+  <span class="reco">Recommended: build with a T-Watch S3</span>, the most realistic option for a student prototype and the closest to the project's idea.
+</div>
+<div class="decision">
+  <b class="q">Demo phone: Android or iPhone?</b>
+  <p style="margin:4px 0 0">Background Bluetooth and sending alerts are much simpler on Android. <span class="reco">Recommended: Android for the demo</span>, while the app stays compatible with iPhone.</p>
+</div>
+<div class="decision">
+  <b class="q">How do we notify caregivers?</b>
+  <p style="margin:4px 0 0">Push notification to a caregiver app (Firebase, free), or SMS through a paid service (Twilio, a few cents per message). <span class="reco">Recommended: push for the demo</span>, with SMS as an option.</p>
+</div>
+
+<h2>7. Suggested plan and final demo</h2>
+<ol>
+  <li>Choose and order the watch (and decide on the demo phone).</li>
+  <li>Get the data from the watch to the phone over Bluetooth, and display it live.</li>
+  <li>Run the Branch 2 detector on the phone.</li>
+  <li>Connect the alert chain: countdown on the watch, then a message to a second phone.</li>
+  <li>In parallel: real results for both branches on a computer, and everyday-movement recordings with the watch.</li>
+</ol>
+<p><b>Demo planned in the report.</b> A team member wears the watch; the app shows today's risk, replayed from a My Seizure Gauge patient. They imitate the rhythmic movement of a seizure: the countdown starts, nobody cancels, and a second phone receives the alert with the location. Then they brush their teeth, and nothing is triggered. The seizure is simulated and the demo says so: validation comes from the datasets.</p>
+
+</body>
+</html>

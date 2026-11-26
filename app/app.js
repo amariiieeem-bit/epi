@@ -648,30 +648,58 @@ function renderPerf() {
 function renderDetect() {
   const v = $("view-detect"); v.innerHTML = "";
   const B2 = b2(), d2 = b2patient();
-  v.insertAdjacentHTML("beforeend", `<h1 class="page-title">Détection</h1><p class="page-sub">Branche 2 : détection des crises convulsives par l'accéléromètre du poignet et alerte des aidants.</p>`);
+  v.insertAdjacentHTML("beforeend", `<h1 class="page-title">Détection</h1><p class="page-sub">Branche 2 : détection des crises convulsives par l'accéléromètre et alerte des aidants.</p>`);
   if (!B2) {
     v.appendChild(card(`<div class="empty-hero"><div class="big-ico">${ico("shield")}</div><h3>Branche 2 en préparation</h3><p>Dès que ses résultats seront exportés dans le même fichier, ils apparaîtront ici et seront fusionnés avec la prévision.</p></div>`));
-  } else if (!d2) {
-    v.appendChild(card(`<div class="empty-hero"><div class="big-ico">${ico("shield")}</div><h3>Pas de données pour ce patient</h3><p>La branche 2 est chargée, mais ne contient pas le patient ${esc(patient()?.id)}.</p></div>`));
   } else {
-    const al = d2.detections || d2.alerts || [];
-    const m = d2.metrics || B2.metrics || {};
-    const tiles = document.createElement("div"); tiles.className = "tiles";
-    tiles.innerHTML = `
-      <div class="tile"><div class="k">${ico("bell")}Alertes</div><div class="v">${al.length}</div><div class="s">enregistrées</div></div>
-      <div class="tile"><div class="k">${ico("target")}Sensibilité</div><div class="v">${pct(m.sensitivity, 0)}</div><div class="s">crises détectées</div></div>
-      <div class="tile"><div class="k">${ico("warning")}Fausses</div><div class="v">${num(m.fa_per_day ?? m.false_alarms_per_day, 2)}</div><div class="s">par jour</div></div>`;
-    v.appendChild(tiles);
-    v.appendChild(card(`<div class="card-head"><div class="card-title">Dernières alertes</div></div><div class="list">${al.length ? al.slice(-20).reverse().map((a) => {
-      const t = parseLocal(a.time), ok = a.true_seizure ?? a.confirmed;
-      return `<div class="row"><div class="row-ico">${ico("bell")}</div><div class="row-main"><div class="row-title">${t ? `${fmtDay(t)} · ${fmtTime(t)}` : esc(a.time)}</div><div class="row-sub">Confiance ${pct(a.confidence ?? a.probability, 0)}${a.prior_shift_applied != null ? ` · ajustement ${signed(a.prior_shift_applied)}` : ""}</div></div>${ok == null ? "" : ok ? `<span class="badge crit">${ico("bolt")}Crise</span>` : `<span class="badge neutral">${ico("info")}Fausse alerte</span>`}</div>`;
-    }).join("") : `<div class="empty-line">Aucune alerte.</div>`}</div>`));
+    const row = (ic, title, sub, end, endSmall = "") => `<div class="row"><div class="row-ico">${ico(ic)}</div><div class="row-main"><div class="row-title">${title}</div>${sub ? `<div class="row-sub">${sub}</div>` : ""}</div><div class="row-end">${end}${endSmall ? `<small>${endSmall}</small>` : ""}</div></div>`;
+    const ok = (good) => (good == null ? "" : good ? `<span class="badge good">${ico("check")}objectif atteint</span>` : `<span class="badge warn">${ico("warning")}objectif non atteint</span>`);
+    // ---- ce patient : détecteur sur son poignet, avec la prévision de la branche 1
+    if (d2) {
+      const al = d2.detections || d2.alerts || [];
+      const m = d2.metrics || {};
+      const tiles = document.createElement("div"); tiles.className = "tiles";
+      tiles.innerHTML = `
+        <div class="tile"><div class="k">${ico("bell")}Alertes</div><div class="v">${al.length}</div><div class="s">sur ${num(d2.hours_worn, 0)} h portées</div></div>
+        <div class="tile"><div class="k">${ico("warning")}Fausses</div><div class="v">${num(m.fa_per_day ?? m.false_alarms_per_day, 1)}</div><div class="s">par jour</div></div>
+        <div class="tile"><div class="k">${ico("target")}Près d'une crise</div><div class="v">${m.n_alarms_near_seizure ?? "—"}</div><div class="s">${m.n_seizures_in_period != null ? `${m.n_seizures_in_period} crise${m.n_seizures_in_period > 1 ? "s" : ""} sur la période` : "alertes"}</div></div>`;
+      v.appendChild(tiles);
+      if (m.fa_per_day_no_prior != null) {
+        const gain = m.fa_per_day_no_prior > 0 ? 1 - (m.fa_per_day ?? 0) / m.fa_per_day_no_prior : null;
+        v.appendChild(card(`<div class="card-head"><div><div class="card-title">Apport de la prévision</div><div class="card-sub">Fausses alertes par jour au poignet, pour ce patient</div></div></div><div class="list">
+          ${row("watch", "Détecteur seul", "Seuil fixe", num(m.fa_per_day_no_prior, 1), "/ jour")}
+          ${row("sliders", "Détecteur + branche 1", "Logit décalé de log(r / r̄), borné à ±1", num(m.fa_per_day, 1), "/ jour")}
+          </div>${gain != null ? `<p class="row-sub" style="margin-top:8px">${gain >= 0 ? `${pct(gain, 0)} de fausses alertes en moins avec la prévision.` : `${pct(-gain, 0)} de fausses alertes en plus avec la prévision.`}</p>` : ""}`));
+      }
+      v.appendChild(card(`<div class="card-head"><div><div class="card-title">Dernières alertes</div><div class="card-sub">${al.length > 10 ? `10 plus récentes sur ${al.length} · ` : ""}${esc(d2.source || "")}</div></div></div><div class="list">${al.length ? al.slice(-10).reverse().map((a) => {
+        const t = parseLocal(a.time), near = a.true_seizure ?? a.confirmed;
+        return `<div class="row"><div class="row-ico">${ico("bell")}</div><div class="row-main"><div class="row-title">${t ? `${fmtDay(t)} · ${fmtTime(t)}` : esc(a.time)}</div><div class="row-sub">Confiance ${pct(a.confidence ?? a.probability, 0)}${a.prior_shift_applied != null ? ` · ajustement ${signed(a.prior_shift_applied)}` : ""}${a.still_after ? " · immobilité ensuite" : ""}</div></div>${near == null ? "" : near ? `<span class="badge crit">${ico("bolt")}Près d'une crise</span>` : `<span class="badge neutral">${ico("info")}Fausse alerte</span>`}</div>`;
+      }).join("") : `<div class="empty-line">Aucune alerte.</div>`}</div>`));
+    } else {
+      v.appendChild(card(`<div class="empty-hero"><div class="big-ico">${ico("watch")}</div><h3>Pas de données de poignet pour ce patient</h3><p>Les résultats ci-dessous viennent des patients de test de SeizeIT2.</p></div>`));
+    }
+    // ---- performance mesurée (SeizeIT2, patients jamais vus à l'entraînement)
+    const M = B2.metrics || {}, T = B2.targets || {};
+    v.appendChild(card(`<div class="card-head"><div><div class="card-title">Performance du détecteur</div><div class="card-sub">${esc(B2.dataset?.name || "SeizeIT2")} · patients de test</div></div></div><div class="list">
+      ${row("target", "Crises détectées", `${M.n_detected ?? "—"} sur ${M.n_seizures ?? "—"} crises convulsives ${ok(M.sensitivity != null && T.sensitivity != null ? M.sensitivity >= T.sensitivity : null)}`, pct(M.sensitivity, 0), `objectif ≥ ${pct(T.sensitivity, 0)}`)}
+      ${row("warning", "Fausses alertes", `${num(M.hours, 0)} h d'enregistrement ${ok(M.fa_per_day != null && T.fa_per_day != null ? M.fa_per_day < T.fa_per_day : null)}`, num(M.fa_per_day, 2), `/ jour · objectif < ${num(T.fa_per_day, 0)}`)}
+      ${row("clock", "Délai médian", `90 % des alertes en moins de ${num(M.delay_p90_s, 0)} s ${ok(M.delay_median_s != null && T.delay_s != null ? M.delay_median_s < T.delay_s : null)}`, `${num(M.delay_median_s, 0)} s`, `objectif < ${num(T.delay_s, 0)} s`)}
+      </div>`));
+    const PE = B2.prior_effect || [];
+    if (PE.length) {
+      const L = { none: ["watch", "Sans prévision"], useless: ["repeat", "Prévision inutile"], branch1: ["gauge", "Prévision de la branche 1"], perfect: ["medal", "Prévision parfaite"] };
+      v.appendChild(card(`<div class="card-head"><div><div class="card-title">Apport de la prévision (simulation)</div><div class="card-sub">Fausses alertes par jour à ${pct(T.sensitivity ?? 0.9, 0)} de sensibilité</div></div></div><div class="list">${PE.map((r) => row((L[r.prior] || ["info"])[0], (L[r.prior] || [0, r.prior])[1], r.reached_target ? `sensibilité ${pct(r.sensitivity, 0)}` : `objectif non atteint (max ${pct(r.sensitivity, 0)})`, num(r.fa_per_day, 2), "/ jour")).join("")}</div>`));
+    }
+    const LA = B2.lookalike || [];
+    if (LA.length) {
+      v.appendChild(card(`<div class="card-head"><div><div class="card-title">Gestes du quotidien</div><div class="card-sub">Alertes par heure d'activité (doit rester à 0)</div></div></div><div class="list">${LA.map((r) => row("move", esc(String(r.activity).replace(/_/g, " ")), `${num(r.hours * 60, 0)} min enregistrées`, num(r.alarms_per_hour, 1), "/ h")).join("")}</div>`));
+    }
   }
   // schéma de la fusion
   const steps = [
     ["gauge", "linear-gradient(150deg,#0b2a4a,#0e7490)", "Prévision du risque", "Branche 1 · probabilité sur 1 h et 24 h", true],
     ["sliders", "linear-gradient(150deg,#0e7490,#14b8a6)", "Ajustement a priori", "log(r / r̄) borné à ±1, ajouté au logit du détecteur", true],
-    ["watch", B2 ? "linear-gradient(150deg,#1d4ed8,#257de0)" : "#9aa8bb", "Détecteur de crises", "Branche 2 · accéléromètre du poignet", !!B2],
+    ["watch", B2 ? "linear-gradient(150deg,#1d4ed8,#257de0)" : "#9aa8bb", "Détecteur de crises", "Branche 2 · fenêtres de 10 s, 20 s positives d'affilée", !!B2],
     ["bell", B2 ? "linear-gradient(150deg,#b02a2b,#dc3c3d)" : "#9aa8bb", "Alerte aux aidants", "Notification en cas de crise convulsive", !!B2],
   ];
   v.appendChild(card(`<div class="card-head"><div class="card-title">Comment les deux branches s'assemblent</div></div><div class="flow">${steps.map(([ic, bg, t, s, ready], i) => `

@@ -1,0 +1,10 @@
+numpy>=1.24
+pandas>=2.0
+scipy>=1.10
+scikit-learn>=1.4     # random forest with missing values (heart rate absent)
+# optional
+torch>=2.0            # 1D CNN (--model cnn / cnn_phys)
+xgboost               # --model xgb
+onnx                  # export of the CNN to the watch / phone
+openneuro-py          # download SeizeIT2
+pytest                # or run: python tests/test_branch2.py

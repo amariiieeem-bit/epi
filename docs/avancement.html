@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>EpiCare — Point d'avancement du prototype</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm 16mm 15mm; }
+  :root { --ink:#0f1b2d; --ink2:#46546a; --ink3:#7a8699; --line:#dfe4ec; --brand:#0e7490; --brand2:#0b2a4a;
+          --done:#15803d; --doneb:#e7f6ec; --part:#b45309; --partb:#fdf1e2; --todo:#9f1239; --todob:#fde8ee; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", Calibri, Arial, sans-serif; color: var(--ink); font-size: 10.3pt; line-height: 1.45; margin: 0; }
+  h1 { font-size: 21pt; margin: 0 0 2px; color: var(--brand2); letter-spacing: -.01em; }
+  h2 { font-size: 13.5pt; margin: 20px 0 8px; color: var(--brand2); border-bottom: 2px solid var(--brand); padding-bottom: 3px; break-after: avoid; }
+  h3 { font-size: 11pt; margin: 14px 0 6px; break-after: avoid; }
+  p { margin: 0 0 7px; }
+  .sub { color: var(--ink2); font-size: 10.5pt; margin-bottom: 14px; }
+  .lead { background: #eef6f8; border-left: 4px solid var(--brand); padding: 10px 13px; border-radius: 4px; margin: 10px 0 4px; }
+  .lead p:last-child { margin: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0 8px; font-size: 9.6pt; }
+  tr { break-inside: avoid; }
+  th { text-align: left; background: #f2f5f9; color: var(--ink2); font-weight: 600; padding: 5px 7px; border-bottom: 1px solid var(--line); }
+  td { padding: 5px 7px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .tag { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 8.6pt; font-weight: 650; white-space: nowrap; }
+  .done { background: var(--doneb); color: var(--done); }
+  .part { background: var(--partb); color: var(--part); }
+  .todo { background: var(--todob); color: var(--todo); }
+  ul, ol { margin: 0 0 8px; padding-left: 19px; }
+  li { margin-bottom: 3px; }
+  .note { font-size: 9.2pt; color: var(--ink2); }
+  .warn { background: var(--partb); border-left: 4px solid var(--part); padding: 8px 12px; border-radius: 4px; margin: 8px 0; font-size: 9.6pt; break-inside: avoid; }
+  .shots { display: flex; gap: 14px; justify-content: center; margin: 8px 0 4px; break-inside: avoid; }
+  .shots figure { margin: 0; width: 48%; text-align: center; }
+  .shots img { width: 100%; height: 300px; object-fit: cover; object-position: top; border-radius: 10px; border: 1px solid var(--line); }
+  figcaption { font-size: 8.8pt; color: var(--ink2); margin-top: 4px; }
+  .diagram { margin: 6px 0 2px; break-inside: avoid; }
+  .decision { border: 1px solid var(--line); border-radius: 6px; padding: 9px 12px; margin: 8px 0; break-inside: avoid; }
+  .decision b.q { color: var(--brand2); }
+  .reco { color: var(--done); font-weight: 600; }
+  code { font-family: Consolas, monospace; font-size: 8.9pt; background: #f2f5f9; padding: 0 3px; border-radius: 3px; }
+  .pb { break-before: page; }
+  .small td, .small th { font-size: 9.1pt; }
+</style>
+</head>
+<body>
+
+<h1>EpiCare — Point d'avancement du prototype</h1>
+<div class="sub">26 novembre 2026 · montre + téléphone + application, Branches 1 et 2</div>
+
+<div class="lead">
+  <p><b>Les deux modèles sont codés et testés ; il manque toute la chaîne en direct.</b> La Branche 1 (prévision du risque) et la Branche 2 (détection des crises convulsives) tournent de bout en bout, mais seulement sur données synthétiques pour l'instant. L'application affiche leurs résultats, sans recevoir de données en direct.</p>
+  <p>Pour finir le prototype, il reste quatre choses : <b>la montre</b>, <b>le lien Bluetooth</b>, <b>la détection en direct sur le téléphone</b> et <b>l'alerte aux proches</b>. Pendant ce temps, les vrais résultats des modèles se calculent sur ordinateur.</p>
+</div>
+
+<h2>1. Le prototype visé, et ce qui existe déjà</h2>
+<div class="diagram">
+<svg viewBox="0 0 720 300" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Calibri, Arial" font-size="11">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#46546a"/></marker>
+  </defs>
+  <!-- Montre -->
+  <rect x="10" y="40" width="150" height="132" rx="10" fill="#fde8ee" stroke="#9f1239"/>
+  <text x="85" y="62" text-anchor="middle" font-weight="700" font-size="12.5" fill="#0f1b2d">Montre</text>
+  <text x="85" y="82" text-anchor="middle" fill="#46546a">accéléromètre 32 Hz</text>
+  <text x="85" y="97" text-anchor="middle" fill="#46546a">fréquence cardiaque</text>
+  <text x="85" y="112" text-anchor="middle" fill="#46546a">vibreur, écran</text>
+  <text x="85" y="127" text-anchor="middle" fill="#46546a">compte à rebours + Annuler</text>
+  <text x="85" y="158" text-anchor="middle" font-weight="700" fill="#9f1239">À faire</text>
+  <!-- BLE -->
+  <line x1="160" y1="106" x2="248" y2="106" stroke="#46546a" stroke-width="1.6" marker-end="url(#a)"/>
+  <text x="204" y="97" text-anchor="middle" fill="#0f1b2d" font-weight="600">Bluetooth</text>
+  <text x="204" y="122" text-anchor="middle" fill="#9f1239" font-weight="600">à faire</text>
+  <!-- Téléphone -->
+  <rect x="250" y="10" width="250" height="282" rx="12" fill="#f7f9fc" stroke="#0e7490" stroke-width="1.4"/>
+  <text x="375" y="31" text-anchor="middle" font-weight="700" font-size="12.5" fill="#0f1b2d">Téléphone · application patient</text>
+  <rect x="264" y="44" width="222" height="44" rx="7" fill="#fdf1e2" stroke="#b45309"/>
+  <text x="275" y="62" font-weight="650" fill="#0f1b2d">Branche 2 · détecteur en direct</text>
+  <text x="275" y="78" fill="#b45309">modèle prêt · pas encore sur le téléphone</text>
+  <rect x="264" y="96" width="222" height="44" rx="7" fill="#fdf1e2" stroke="#b45309"/>
+  <text x="275" y="114" font-weight="650" fill="#0f1b2d">Branche 1 · risque du jour</text>
+  <text x="275" y="130" fill="#b45309">calculé sur PC, affiché · pas en direct</text>
+  <rect x="264" y="148" width="222" height="44" rx="7" fill="#e7f6ec" stroke="#15803d"/>
+  <text x="275" y="166" font-weight="650" fill="#0f1b2d">Écrans : risque, tendances, cycles</text>
+  <text x="275" y="182" fill="#15803d">fait (Expo Go) · onglet Détection fait</text>
+  <rect x="264" y="200" width="222" height="44" rx="7" fill="#fde8ee" stroke="#9f1239"/>
+  <text x="275" y="218" font-weight="650" fill="#0f1b2d">Alerte, contacts, journal, export</text>
+  <text x="275" y="234" fill="#9f1239">à faire</text>
+  <text x="375" y="276" text-anchor="middle" fill="#46546a" font-size="10.5">prior : log(r / r̄) borné à ±1 → détecteur</text>
+  <!-- Proches -->
+  <line x1="500" y1="222" x2="568" y2="222" stroke="#46546a" stroke-width="1.6" marker-end="url(#a)"/>
+  <text x="534" y="213" text-anchor="middle" fill="#0f1b2d" font-weight="600">push / SMS</text>
+  <text x="534" y="239" text-anchor="middle" fill="#46546a">+ GPS</text>
+  <rect x="570" y="186" width="140" height="74" rx="10" fill="#fde8ee" stroke="#9f1239"/>
+  <text x="640" y="207" text-anchor="middle" font-weight="700" font-size="12.5" fill="#0f1b2d">Proches</text>
+  <text x="640" y="224" text-anchor="middle" fill="#46546a">contact 1, puis 2…</text>
+  <text x="640" y="248" text-anchor="middle" font-weight="700" fill="#9f1239">À faire</text>
+  <!-- PC -->
+  <rect x="570" y="30" width="140" height="110" rx="10" fill="#fdf1e2" stroke="#b45309"/>
+  <text x="640" y="51" text-anchor="middle" font-weight="700" font-size="12.5" fill="#0f1b2d">Ordinateur</text>
+  <text x="640" y="69" text-anchor="middle" fill="#46546a">entraînement des modèles</text>
+  <text x="640" y="84" text-anchor="middle" fill="#46546a">SeizeIT2 (Branche 2)</text>
+  <text x="640" y="99" text-anchor="middle" fill="#46546a">My Seizure Gauge (B1)</text>
+  <text x="640" y="120" text-anchor="middle" font-weight="700" fill="#b45309">Code prêt</text>
+  <text x="640" y="134" text-anchor="middle" font-weight="700" fill="#b45309">vraies données en cours</text>
+  <line x1="570" y1="85" x2="502" y2="85" stroke="#46546a" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#a)"/>
+  <text x="536" y="76" text-anchor="middle" fill="#46546a" font-size="10">modèles</text>
+</svg>
+</div>
+<p class="note">Vert : fait. Orange : codé mais pas encore sur les vraies données ou pas encore en direct. Rouge : pas commencé. Les données de la montre vont au téléphone, qui détecte la crise, lance le compte à rebours sur la montre puis alerte les proches. Les crises confirmées par le patient retournent dans la Branche 1.</p>
+
+<h2>2. Où on en est, pièce par pièce</h2>
+<table>
+  <tr><th style="width:24%">Pièce</th><th style="width:13%">État</th><th>Détail</th></tr>
+  <tr><td>Branche 1 · prévision du risque</td><td><span class="tag part">Codé</span></td><td>Probabilité de crise sur 1 h et 24 h, cycles personnels, calibration. Testée sur données synthétiques ; l'archive réelle My Seizure Gauge n'est pas encore traitée sur ce PC.</td></tr>
+  <tr><td>Branche 2 · détection</td><td><span class="tag part">Codé</span></td><td>Chaîne complète (lecture SeizeIT2, signal, modèles, décision, évaluation). Format réel vérifié. Données réelles en téléchargement.</td></tr>
+  <tr><td>Lien Branche 1 → Branche 2</td><td><span class="tag done">Fait</span></td><td>Le risque décale le seuil du détecteur, plafonné à ±1. Simulation du rapport (§7) et test au poignet sur les patients de la Branche 1.</td></tr>
+  <tr><td>Application · écrans de résultats</td><td><span class="tag done">Fait</span></td><td>Aujourd'hui, Tendances, Cycles, Fiabilité, Détection. Tourne dans Expo Go, hors ligne.</td></tr>
+  <tr><td>Application · direct et alertes</td><td><span class="tag todo">À faire</span></td><td>Réception Bluetooth, détecteur en direct, compte à rebours, alerte aux proches, journal des crises, contacts.</td></tr>
+  <tr><td>Montre</td><td><span class="tag todo">À faire</span></td><td>Choix du matériel, programme de la montre (capteurs, Bluetooth, vibreur, bouton Annuler).</td></tr>
+  <tr><td>Enregistrements « gestes du quotidien »</td><td><span class="tag todo">À faire</span></td><td>Brossage de dents, applaudissements, course, bouteille, bus… au poignet. Le format CSV est prêt.</td></tr>
+</table>
+
+<h2>3. Branche 2 : ce qui a été fait</h2>
+<p>Le dossier <code>branch2/</code> suit l'organisation de <code>branch1/</code> : un paquet Python, 10 tests automatiques et une ligne de commande.</p>
+<table class="small">
+  <tr><th style="width:27%">Étape (rapport §5)</th><th>Ce que fait le code</th></tr>
+  <tr><td>Données</td><td>Lecture de SeizeIT2 (BIDS, EDF) sans bibliothèque externe ; téléchargement direct depuis OpenNeuro, reprise automatique.</td></tr>
+  <tr><td>Signal</td><td>Rééchantillonnage à 32 Hz, norme, gravité retirée, fenêtres de 10 s avec 50 % de recouvrement ; fréquence cardiaque tirée de l'ECG.</td></tr>
+  <tr><td>Modèles</td><td>Référence : forêt aléatoire sur des descripteurs faits main (fréquence dominante, puissance 2–8 Hz, régularité, énergie, variation du cœur). Principal : petit réseau convolutif 1D, avec ou sans fréquence cardiaque, exportable vers la montre (ONNX).</td></tr>
+  <tr><td>Décision</td><td>Crise déclarée après 15–20 s de fenêtres positives d'affilée ; une alerte par épisode ; 3 alertes par heure au plus.</td></tr>
+  <tr><td>Évaluation</td><td>Découpage par patient, jamais par fenêtre ; seuil réglé uniquement sur les patients d'entraînement. Mesures : crises détectées, fausses alertes par jour, délai.</td></tr>
+  <tr><td>Fusion avec la Branche 1</td><td>Le détecteur tourne sur le poignet (Empatica E4) des patients de la Branche 1, avec leur risque horaire comme prior. Résultats envoyés à l'onglet Détection de l'app.</td></tr>
+</table>
+
+<h3>Ce que les vraies données nous ont appris</h3>
+<table class="small">
+  <tr><th style="width:27%">Constat</th><th>Conséquence</th></tr>
+  <tr><td>57 crises convulsives chez 38 patients (sur 886 crises, 125 patients)</td><td>Peu d'exemples : le modèle doit rester simple, et on ne télécharge d'abord que ces 38 patients (19 GB sur 126 GB).</td></tr>
+  <tr><td>Le capteur de SeizeIT2 est sur la poitrine et la nuque, à 25 Hz, pas au poignet</td><td>Il faut vérifier, et sans doute ajuster, le modèle sur des données de poignet : E4 de My Seizure Gauge et notre montre.</td></tr>
+  <tr><td>Le fichier indique « g » mais lit 0,50 g au repos, au lieu de 1 g</td><td>Corrigé : calibration automatique sur la gravité. Sans elle, le modèle n'aurait pas marché sur une montre.</td></tr>
+  <tr><td>Sur une vraie crise (patient sub-015) : énergie du mouvement × 25, rythme peu marqué sur la poitrine ; ECG illisible pendant la crise, puis cœur +29 bpm</td><td>Le détecteur s'appuiera surtout sur l'énergie et le cœur. Le rythme devrait être plus visible au poignet.</td></tr>
+  <tr><td>258 crises hyperkinétiques (mouvements forts, mais pas convulsives)</td><td>Elles ne comptent ni comme détection ni comme fausse alerte.</td></tr>
+</table>
+
+<div class="warn"><b>À lire avec prudence.</b> Sur données synthétiques, le détecteur trouve 6 crises sur 7, sans fausse alerte, avec 18 s de délai. Ces chiffres prouvent seulement que le code marche, pas que le détecteur est bon. Les vrais chiffres viendront de SeizeIT2 (jalon M2 du rapport). De même, la baisse de fausses alertes grâce à la prévision, visible dans l'app, est calculée sur données synthétiques.</div>
+
+<h2>4. L'application aujourd'hui</h2>
+<div class="shots">
+  <figure><img src="app-home.png" alt="Onglet Aujourd'hui"><figcaption>Aujourd'hui : risque des 24 prochaines heures (Branche 1)</figcaption></figure>
+  <figure><img src="app-detect.png" alt="Onglet Détection"><figcaption>Détection : alertes et apport de la prévision (Branches 1 + 2)</figcaption></figure>
+</div>
+<p class="note">Captures sur données synthétiques (bandeau jaune). L'app lit un fichier de résultats produit sur ordinateur ; elle ne reçoit encore aucune donnée de capteur.</p>
+
+<h2>5. Ce qui reste pour finir le prototype</h2>
+<table class="small">
+  <tr><th style="width:4%">#</th><th style="width:36%">Tâche</th><th style="width:20%">Rôle (rapport)</th><th>Remarque</th></tr>
+  <tr><td>1</td><td><b>Choisir la montre</b></td><td>Toute l'équipe</td><td>Décide de tout le reste (voir section 6).</td></tr>
+  <tr><td>2</td><td>Programme de la montre : capteurs à 32 Hz, envoi Bluetooth, vibreur, compte à rebours, bouton Annuler</td><td>App et chaîne d'alerte</td><td>Avec une T-Watch : C++ (Arduino ou ESP-IDF).</td></tr>
+  <tr><td>3</td><td>Bluetooth dans l'app</td><td>App et chaîne d'alerte</td><td><b>Expo Go ne gère pas le Bluetooth</b> : il faut une version de développement (EAS, gratuit) et <code>react-native-ble-plx</code>.</td></tr>
+  <tr><td>4</td><td>Détecteur en direct sur le téléphone</td><td>Branche 2 + App</td><td>Recoder les descripteurs en JavaScript et exporter le modèle. Sur la montre plus tard, si elle le permet.</td></tr>
+  <tr><td>5</td><td>Chaîne d'alerte : compte à rebours, message au proche avec GPS, contact suivant sans réponse, nouvelle alerte si immobilité prolongée</td><td>App et chaîne d'alerte</td><td>Sur iPhone, une app n'envoie pas de SMS toute seule : il faut un petit serveur (Firebase + service SMS) ou une notification push vers l'aidant.</td></tr>
+  <tr><td>6</td><td>Écrans manquants : contacts et réglages, journal des crises (confirmer ou rejeter chaque alerte), export pour le médecin</td><td>App</td><td>Les crises confirmées alimentent la Branche 1 ; les fausses alertes deviennent des exemples négatifs pour la Branche 2.</td></tr>
+  <tr><td>7</td><td>Vrais résultats de la Branche 2 sur SeizeIT2 (jalon M2), puis réseau convolutif (M4)</td><td>Branche 2 + Data</td><td>Téléchargement en cours (environ 14 h) ; PyTorch à installer pour le réseau.</td></tr>
+  <tr><td>8</td><td>Vrais résultats de la Branche 1 sur My Seizure Gauge</td><td>Branche 1 + Data</td><td>Télécharger au moins une archive (3,3 GB pour le patient 1869).</td></tr>
+  <tr><td>9</td><td>Enregistrer les gestes du quotidien <b>avec notre montre</b></td><td>Branche 2</td><td>Meilleur test anti-fausses alertes ; sert aussi à ajuster le modèle au poignet.</td></tr>
+  <tr><td>10</td><td>Fusion finale (jalon M5) : résultats réels de la Branche 2 au poignet, avec le risque réel de la Branche 1</td><td>Toute l'équipe</td><td>Code prêt (<code>python -m epicare_b2 fuse</code>).</td></tr>
+  <tr><td>11</td><td>Répétition de la démo, rapport, présentation (M6)</td><td>Toute l'équipe</td><td>Voir le scénario ci-dessous.</td></tr>
+</table>
+
+<h2>6. Décisions à prendre ensemble</h2>
+<div class="decision">
+  <b class="q">Fabriquer notre montre ou en acheter une ?</b>
+  <ul>
+    <li><b>Fabriquer</b> à partir d'une carte toute faite, par exemple la LilyGO T-Watch S3 (ESP32-S3, environ 40 €) : accéléromètre, Bluetooth, écran, vibreur et batterie déjà intégrés. C'est vraiment « notre montre », mais il faut écrire son programme. Pour la fréquence cardiaque, ajouter un capteur optique (type MAX30102).</li>
+    <li><b>Acheter</b> une montre Wear OS : capteurs et fréquence cardiaque fiables, mais il faut une app pour la montre, et ce n'est pas notre matériel.</li>
+  </ul>
+  <span class="reco">Recommandé : fabriquer avec une T-Watch S3</span>, le plus réaliste pour un prototype d'étudiants et le plus fidèle à l'idée du projet.
+</div>
+<div class="decision">
+  <b class="q">Téléphone de démo : Android ou iPhone ?</b>
+  <p style="margin:4px 0 0">Le Bluetooth en arrière-plan et l'envoi d'alertes sont nettement plus simples sur Android. <span class="reco">Recommandé : Android pour la démo</span>, l'app restant compatible avec l'iPhone.</p>
+</div>
+<div class="decision">
+  <b class="q">Comment prévenir les proches ?</b>
+  <p style="margin:4px 0 0">Notification push vers l'app d'un aidant (Firebase, gratuit), ou SMS via un service payant (Twilio, quelques centimes par message). <span class="reco">Recommandé : push pour la démo</span>, avec le SMS en option.</p>
+</div>
+
+<h2>7. Plan conseillé et démo finale</h2>
+<ol>
+  <li>Choisir et commander la montre (et décider du téléphone de démo).</li>
+  <li>Faire passer les données montre → téléphone par Bluetooth, et les afficher en direct.</li>
+  <li>Faire tourner le détecteur de la Branche 2 sur le téléphone.</li>
+  <li>Brancher la chaîne d'alerte : compte à rebours sur la montre, puis message au deuxième téléphone.</li>
+  <li>En parallèle : vrais résultats des deux branches sur ordinateur, et enregistrements des gestes avec la montre.</li>
+</ol>
+<p><b>Démo prévue par le rapport.</b> Un membre de l'équipe porte la montre ; l'app affiche le risque du jour, rejoué depuis un patient de My Seizure Gauge. Il imite le mouvement rythmique d'une crise : le compte à rebours démarre, personne n'annule, un deuxième téléphone reçoit l'alerte avec la position. Puis il se brosse les dents, et rien ne se déclenche. La crise est simulée et la démo le dit : la validation vient des bases de données.</p>
+
+</body>
+</html>
