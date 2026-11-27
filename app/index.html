@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>EpiCare</title>
   <meta name="description" content="EpiCare : prévision du risque de crise d'épilepsie à partir d'une montre connectée.">
-  <meta name="theme-color" content="#0B2A4A">
-  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#0a1a3a">
+  <meta name="color-scheme" content="dark">
   <!-- iOS: plein écran une fois ajoutée à l'écran d'accueil -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
@@ -46,6 +46,7 @@
       <section class="view" id="view-cycles" data-title="Cycles" hidden></section>
       <section class="view" id="view-perf" data-title="Performance" hidden></section>
       <section class="view" id="view-detect" data-title="Détection" hidden></section>
+      <section class="view" id="view-demo" data-title="Démo montre" hidden></section>
     </main>
 
     <nav class="tabbar" role="tablist">
@@ -63,6 +64,9 @@
     <div class="sheet-grip"></div>
     <div id="sheetBody"></div>
   </div>
+
+  <!-- création du profil (premier lancement) -->
+  <div class="onboard" id="onboard" role="dialog" aria-modal="true" aria-label="Création du profil" hidden></div>
 
   <div class="tooltip" id="tooltip" hidden></div>
   <input type="file" id="fileInput" accept="application/json,.json" hidden>

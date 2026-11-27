@@ -46,6 +46,27 @@ const ICONS = {
   brain: '<path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V5a2 2 0 0 0-3-1z"/><path d="M15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1"/>',
   sliders: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
 };
+/* icônes météo pleines (64×64) : le niveau de risque se lit comme le temps qu'il fait */
+const CLOUD = "M19 52h28a12 12 0 0 0 1.5-23.9A16 16 0 0 0 18 31.5 10.3 10.3 0 0 0 19 52z";
+const SUN_RAYS = (cx, cy, r0, r1, w) => Array.from({ length: 8 }, (_, k) => {
+  const a = (k * Math.PI) / 4;
+  return `<line x1="${(cx + r0 * Math.cos(a)).toFixed(1)}" y1="${(cy + r0 * Math.sin(a)).toFixed(1)}" x2="${(cx + r1 * Math.cos(a)).toFixed(1)}" y2="${(cy + r1 * Math.sin(a)).toFixed(1)}" stroke="#FFD24D" stroke-width="${w}" stroke-linecap="round"/>`;
+}).join("");
+const WX = {
+  sun: `<circle cx="32" cy="32" r="13" fill="#FFD24D"/>${SUN_RAYS(32, 32, 19, 26, 4)}`,
+  moon: `<path d="M41 9a23 23 0 1 0 15 35A19 19 0 0 1 41 9z" fill="#F4EEC9"/>`,
+  partSun: `<circle cx="24" cy="23" r="10" fill="#FFD24D"/>${SUN_RAYS(24, 23, 14.5, 19.5, 3.2)}<path d="${CLOUD}" fill="#F2F5FA"/>`,
+  partMoon: `<path d="M30 5a16 16 0 1 0 12 25A13 13 0 0 1 30 5z" fill="#F4EEC9"/><path d="${CLOUD}" fill="#DCE3EE"/>`,
+  storm: `<path d="${CLOUD}" transform="translate(0 -6)" fill="#A9B4C8"/><path d="M33 40 26 53h7l-3 10 11-15h-7l4-8z" fill="#FFD24D"/><path d="M18 50l-2 5M48 50l-2 5" stroke="#9fd8ff" stroke-width="3" stroke-linecap="round"/>`,
+};
+const wx = (name, cls = "") => `<span class="wx ${cls}"><svg viewBox="0 0 64 64" aria-hidden="true">${WX[name] || ""}</svg></span>`;
+const isNight = (d) => d && (d.getHours() >= 21 || d.getHours() < 7);
+/** Icône météo d'un niveau : calme = soleil (lune la nuit), vigilance = nuageux, élevé = orage. */
+function wxFor(levelKey, d) {
+  if (levelKey === "high") return "storm";
+  if (levelKey === "medium") return isNight(d) ? "partMoon" : "partSun";
+  return isNight(d) ? "moon" : "sun";
+}
 const ico = (name, cls = "") => `<span class="ico ${cls}">${svgIco(name)}</span>`;
 const svgIco = (name) => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ""}</svg>`;
 function hydrateIcons(root = document) {
@@ -77,9 +98,15 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 
 /* ============================================================ textes métier */
 const LEVELS = {
-  low: { label: "Faible", cls: "good", color: "var(--good)", icon: "checkCircle" },
-  medium: { label: "Modéré", cls: "warn", color: "var(--warn)", icon: "alert" },
-  high: { label: "Élevé", cls: "crit", color: "var(--crit)", icon: "warning" },
+  low: { label: "Faible", cls: "good", color: "var(--good)", icon: "checkCircle", sky: "Ciel calme",
+    title: "Journée plutôt calme", text: "Le risque est bas aujourd'hui. Continuez votre routine habituelle.",
+    tips: [["heart", "Gardez la montre au poignet : la prévision reste juste."], ["clock", "Prenez votre traitement à l'heure habituelle."]] },
+  medium: { label: "Modéré", cls: "warn", color: "var(--warn)", icon: "alert", sky: "Vigilance",
+    title: "Restez attentif aujourd'hui", text: "Le risque est un peu plus haut que d'habitude. Rien d'alarmant : quelques gestes simples aident.",
+    tips: [["moon", "Dormez suffisamment ce soir."], ["clock", "Ne sautez pas de prise de traitement."], ["user", "Dites à un proche comment vous vous sentez."]] },
+  high: { label: "Élevé", cls: "crit", color: "var(--crit)", icon: "warning", sky: "Prudence",
+    title: "Journée à surveiller", text: "Le risque est plus élevé que d'habitude. Prenez soin de vous et ne restez pas seul pour les activités à risque.",
+    tips: [["user", "Prévenez un proche ou votre aidant."], ["drop", "Préférez la douche au bain, évitez la baignade seul."], ["shield", "Gardez votre plan d'urgence à portée de main."]] },
 };
 const CONF = { low: "Faible", medium: "Moyenne", high: "Élevée" };
 const MODELS = {
@@ -313,11 +340,11 @@ function lineChart(el, series, opts) {
   for (const k of opts.marks || []) {
     if (k < 0 || k >= n) continue;
     s += `<line x1="${xOf(k)}" x2="${xOf(k)}" y1="${padT}" y2="${padT + ih}" stroke="var(--crit)" stroke-width="1" opacity=".35"/>`;
-    s += `<circle cx="${xOf(k)}" cy="${padT}" r="4.5" fill="var(--crit)" stroke="var(--surface)" stroke-width="2"/>`;
+    s += `<circle cx="${xOf(k)}" cy="${padT}" r="4.5" fill="var(--crit)" stroke="var(--ring)" stroke-width="2"/>`;
   }
   s += `<line class="axis" x1="${padL}" x2="${w - padR}" y1="${padT + ih}" y2="${padT + ih}"/>`;
   for (const [i, l] of opts.xTicks || []) s += `<text class="tick" x="${xOf(i)}" y="${h - 7}" text-anchor="middle">${l}</text>`;
-  s += `<line class="cross" id="cross" x1="0" x2="0" y1="${padT}" y2="${padT + ih}" visibility="hidden"/><circle id="crossDot" r="4.5" fill="var(--series-1)" stroke="var(--surface)" stroke-width="2" visibility="hidden"/>`;
+  s += `<line class="cross" id="cross" x1="0" x2="0" y1="${padT}" y2="${padT + ih}" visibility="hidden"/><circle id="crossDot" r="4.5" fill="var(--series-1)" stroke="var(--ring)" stroke-width="2" visibility="hidden"/>`;
   s += "</svg>";
   el.innerHTML = s;
   const svg = el.querySelector("svg"), cross = svg.querySelector("#cross"), dot = svg.querySelector("#crossDot");
@@ -427,7 +454,7 @@ function reliabilityChart(el, pts) {
   s += `<text class="lbl" x="${x(max * 0.98)}" y="${y(max * 0.98) + 14}" text-anchor="end">idéal</text>`;
   let d = ""; pts.forEach((p, i) => { d += `${i ? "L" : "M"}${x(p.p)} ${y(p.obs)}`; });
   s += `<path d="${d}" fill="none" stroke="var(--series-1)" stroke-width="2"/>`;
-  pts.forEach((p, i) => { s += `<circle data-i="${i}" cx="${x(p.p)}" cy="${y(p.obs)}" r="5" fill="var(--series-1)" stroke="var(--surface)" stroke-width="2"/>`; });
+  pts.forEach((p, i) => { s += `<circle data-i="${i}" cx="${x(p.p)}" cy="${y(p.obs)}" r="5" fill="var(--series-1)" stroke="var(--ring)" stroke-width="2"/>`; });
   s += "</svg>";
   el.innerHTML = s;
   el.querySelectorAll("circle[data-i]").forEach((c) => {
@@ -458,18 +485,54 @@ function renderHome() {
   const c = p.current || {};
   const t = parseLocal(c.time);
   const lv = LEVELS[c.level] || LEVELS.low;
+  const vals = Array.isArray(c.profile_24h) ? c.profile_24h : null;
   const hero = document.createElement("div");
-  hero.className = "hero";
+  hero.className = "wx-hero";
   hero.innerHTML = `
-    <div class="hero-top"><span>Risque · 24 prochaines heures</span><span>${t ? `${fmtDay(t)} · ${fmtTime(t)}` : ""}</span></div>
-    <div class="hero-gauge">${gaugeSVG(c.probability, p.timeline?.levels, c.level)}
-      <div class="hero-value"><div class="num">${nf(c.probability >= 0.1 ? 0 : 1).format((c.probability || 0) * 100)}<small>%</small></div><div class="cap">probabilité calibrée</div></div>
-    </div>
-    <div class="hero-center">
-      <div class="level-pill"><span class="dot" style="background:${lv.color}">${ico(lv.icon)}</span>Risque ${lv.label.toLowerCase()}</div>
-      <p class="hero-msg" style="margin-top:10px">${esc(messageFr(c.probability))}</p>
-    </div>`;
+    <div class="wx-place">${profile()?.first ? `Bonjour ${esc(profile().first)}` : `Patient ${esc(p.id)}`} · ${t ? `${fmtDay(t)}, ${fmtTime(t)}` : "Aujourd'hui"}</div>
+    ${wx(wxFor(c.level, t))}
+    <div class="wx-num">${nf(c.probability >= 0.1 ? 0 : 1).format((c.probability || 0) * 100)}<small>%</small></div>
+    <div class="wx-cap">risque de crise sur les 24 prochaines heures</div>
+    <div class="wx-cond"><span class="dot" style="background:${lv.color}"></span>${lv.sky} · risque ${lv.label.toLowerCase()}</div>
+    <div class="wx-hl">Dans 1 h : ${pct(c.probability_next_hour)} · Habituel : ${pct(c.baseline_probability)}</div>`;
   v.appendChild(hero);
+
+  // message bienveillant + conseils
+  v.appendChild(card(`<div class="wx-msg">${wx(wxFor(c.level, t))}<div><h3>${lv.title}</h3><p>${lv.text}</p><p>${esc(messageFr(c.probability))}.</p></div></div>
+    <div class="tips">${lv.tips.map(([ic, txt]) => `<div class="tip-row">${ico(ic)}<span>${txt}</span></div>`).join("")}</div>`));
+
+  // heure par heure, comme une appli météo
+  if (vals && t) {
+    const sorted = [...vals].sort((a, b) => a - b), med = sorted[Math.floor(sorted.length / 2)] || 0;
+    const order = ["low", "medium", "high"], base = order.indexOf(c.level in LEVELS ? c.level : "low");
+    const lvAt = (x) => order[Math.min(2, Math.max(0, base + (x > med * 1.5 ? 1 : x < med / 1.5 ? -1 : 0)))];
+    const peak = vals.indexOf(Math.max(...vals));
+    const cc = card(`<div class="card-head"><div class="card-title">${ico("clock")}Heure par heure</div></div>
+      <div class="hours">${vals.map((x, i) => { const d = addHours(t, i);
+        return `<div class="hour ${i === 0 ? "now" : ""} ${i === peak ? "peak" : ""}"><span class="h">${i === 0 ? "Maint." : `${d.getHours()} h`}</span>${wx(wxFor(lvAt(x), d))}<span class="p">${pct(x, 1)}</span></div>`; }).join("")}</div>
+      <div class="hours-foot">${ico("info", "sm")}<span>Moment le plus à surveiller : <b>${fmtTime(addHours(t, peak))}</b> (${pct(vals[peak])})</span></div>`);
+    v.appendChild(cc);
+  }
+
+  // derniers jours, comme les prévisions sur 10 jours
+  const tl = p.timeline;
+  if (tl?.start && tl.p24?.length) {
+    const start = parseLocal(tl.start), byDay = new Map();
+    tl.p24.forEach((x, i) => { if (x == null) return; const d = addHours(start, i), k = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      if (!byDay.has(k)) byDay.set(k, { d, xs: [], sz: [] }); byDay.get(k).xs.push(x); });
+    for (const s of tl.seizures || []) { const d = parseLocal(s), k = d && `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; if (byDay.has(k)) byDay.get(k).sz.push(d); }
+    const days = [...byDay.values()].slice(-7);
+    if (days.length) {
+      const lo = Math.min(...days.flatMap((x) => x.xs)), hi = Math.max(...days.flatMap((x) => x.xs)), span = Math.max(1e-6, hi - lo);
+      const L = tl.levels || {}, pos = (x) => ((x - lo) / span) * 100;
+      const dayLv = (m) => (L.high_above != null && m >= L.high_above ? "high" : L.low_below != null && m < L.low_below ? "low" : "medium");
+      v.appendChild(card(`<div class="card-head"><div><div class="card-title">${ico("calendar")}Les ${days.length} derniers jours</div><div class="card-sub">Risque prévu chaque jour · point blanc = crise survenue</div></div></div>
+        <div class="days">${days.map((x) => { const mn = Math.min(...x.xs), mx = Math.max(...x.xs), m = x.xs.reduce((a, b) => a + b, 0) / x.xs.length, k = dayLv(m);
+          return `<div class="day"><span class="dn">${DAYS[x.d.getDay()]} ${x.d.getDate()}</span>${wx(wxFor(k, new Date(2000, 0, 1, 12)))}<span class="lo">${pct(mn, 0)}</span>
+            <div class="range"><div class="fill" style="left:${pos(mn)}%;width:${Math.max(3, pos(mx) - pos(mn))}%;background:${LEVELS[k].color}"></div>${x.sz.length ? `<span class="sz" style="left:${(pos(mn) + pos(mx)) / 2}%" title="${x.sz.length} crise(s)"></span>` : ""}</div>
+            <span class="hi">${pct(mx, 0)}</span></div>`; }).join("")}</div>`));
+    }
+  }
 
   const tiles = document.createElement("div"); tiles.className = "tiles";
   tiles.innerHTML = `
@@ -478,25 +541,9 @@ function renderHome() {
     <div class="tile"><div class="k">${ico("medal")}Confiance</div><div class="v">${CONF[c.confidence] || "—"}</div><div class="s">${p.model?.n_training_events ?? "?"} épisodes</div></div>`;
   v.appendChild(tiles);
 
-  // profil 24 h
-  if (Array.isArray(c.profile_24h) && t) {
-    const cc = card(`<div class="card-head"><div><div class="card-title">Heure par heure</div><div class="card-sub">Probabilité d'une crise dans chacune des 24 prochaines heures</div></div></div><div class="chart" id="profileChart"></div>`);
-    v.appendChild(cc);
-    const vals = c.profile_24h, peak = vals.indexOf(Math.max(...vals));
-    columnChart(cc.querySelector("#profileChart"), vals, {
-      label: "Profil des 24 prochaines heures", height: 150,
-      fmtTick: (x) => pct(x, x === 0 ? 0 : 1),
-      xLabel: (i) => { const d = addHours(t, i); return i % 6 === 0 ? `${d.getHours()} h` : ""; },
-      colorOf: (i) => (i === peak ? "var(--series-1)" : "color-mix(in srgb, var(--series-1) 55%, var(--surface))"),
-      tip: (i) => { const d = addHours(t, i); return `<b>${pct(vals[i])}</b><span class="t-sub">${fmtTime(d)} – ${fmtTime(addHours(d, 1))}</span>`; },
-    });
-    const pk = addHours(t, peak);
-    cc.insertAdjacentHTML("beforeend", `<div class="legend">${ico("info", "sm")}<span>Heure la plus à risque : <b style="color:var(--ink)">${fmtTime(pk)}–${fmtTime(addHours(pk, 1))}</b> (${pct(vals[peak])})</span></div>`);
-  }
-
   // facteurs
   const drivers = (c.drivers || []).map(driverInfo);
-  v.appendChild(card(`<div class="card-head"><div class="card-title">Pourquoi ce niveau ?</div></div>
+  v.appendChild(card(`<div class="card-head"><div class="card-title">${ico("info")}Pourquoi ce ciel ?</div></div>
     <div class="list">${drivers.length ? drivers.map((d) => `<div class="row"><div class="row-ico">${ico(d.icon)}</div><div class="row-main"><div class="row-title">${esc(d.title)}</div><div class="row-sub">${esc(d.sub)}</div></div></div>`).join("")
       : `<div class="empty-line">Aucun facteur ne s'écarte de l'habitude en ce moment.</div>`}</div>`));
 
@@ -649,6 +696,8 @@ function renderDetect() {
   const v = $("view-detect"); v.innerHTML = "";
   const B2 = b2(), d2 = b2patient();
   v.insertAdjacentHTML("beforeend", `<h1 class="page-title">Détection</h1><p class="page-sub">Branche 2 : détection des crises convulsives par l'accéléromètre et alerte des aidants.</p>`);
+  const dc = card(`<div class="wx-msg">${wx("storm")}<div><h3>Démo en direct</h3><p>Le téléphone remplace la montre : secouez-le pour déclencher une alerte.</p></div></div><button class="btn primary" id="openDemo" style="margin-top:12px">${ico("watch")}Lancer la démo</button>`);
+  v.appendChild(dc); dc.querySelector("#openDemo").onclick = () => show("demo");
   if (!B2) {
     v.appendChild(card(`<div class="empty-hero"><div class="big-ico">${ico("shield")}</div><h3>Branche 2 en préparation</h3><p>Dès que ses résultats seront exportés dans le même fichier, ils apparaîtront ici et seront fusionnés avec la prévision.</p></div>`));
   } else {
@@ -711,22 +760,506 @@ function emptyData(v) {
   v.innerHTML = `<div class="card"><div class="empty-hero"><div class="big-ico">${ico("database")}</div><h3>Aucun résultat chargé</h3><p>Exportez les résultats avec <code>python -m epicare_b1 export-app</code>, ou importez un fichier depuis les Réglages.</p></div></div>`;
 }
 
+/* ============================================================ démo : le téléphone remplace la montre
+ * L'accéléromètre du téléphone joue le rôle de celui de la montre.
+ *  - App native (Expo) : App.js lit le capteur (expo-sensors, 50 Hz) et envoie les mesures par lots
+ *    à window.epicareMotion([[t, x, y, z], ...]) (en g).
+ *  - Navigateur : événement devicemotion.  - Sans capteur (PC) : boutons de simulation.
+ * Détecteur volontairement simple et explicable, sur le principe de la branche 2 :
+ *  1. intensité = RMS de l'accélération une fois la gravité retirée (moyenne de chaque axe soustraite),
+ *     sur une fenêtre glissante de 2 s évaluée toutes les 0,5 s ; le rythme est mesuré sur l'axe qui bouge
+ *     le plus (sur la norme, chaque aller-retour compterait double) ;
+ *  2. une fenêtre est « suspecte » si le mouvement est fort (RMS ≥ seuil) ET rythmé (2,5 à 8 Hz),
+ *     signature des secousses d'une crise tonico-clonique ; marcher ou poser le téléphone ne l'est pas ;
+ *  3. alerte quand les fenêtres suspectes s'enchaînent assez longtemps (≈ 8 s).
+ * La prévision de la branche 1 (décalage a priori, borné à ±1) rend le détecteur plus ou moins sensible. */
+const DEMO = {
+  buf: [], on: false, source: "", timer: null, drawTimer: null, simTimer: null, countdown: null,
+  run: 0, state: "idle", alertAt: null, left: 0, log: [], last: { rms: 0, hz: 0, pos: false }, gotSample: false,
+};
+const DEMO_WIN_S = 2, DEMO_TICK_MS = 500, DEMO_KEEP_MS = 12000;
+function demoParams() {
+  const s = Math.max(-1, Math.min(1, patient()?.current?.prior_shift_for_detector ?? 0));
+  return { shift: s, thr: 0.45 * (1 - 0.15 * s), need: 8 * (1 - 0.25 * s), fLo: 2.5, fHi: 9 };
+}
+/** Reçoit des mesures [t (ms), x, y, z] en g, depuis le natif, le navigateur ou la simulation. */
+window.epicareMotion = function (batch) {
+  if (!DEMO.on || !Array.isArray(batch) || !batch.length) return;
+  for (const [t, x, y, z] of batch) DEMO.buf.push({ t, a: [x, y, z] });
+  DEMO.gotSample = true;
+  const cut = DEMO.buf[DEMO.buf.length - 1].t - DEMO_KEEP_MS;
+  while (DEMO.buf.length && DEMO.buf[0].t < cut) DEMO.buf.shift();
+};
+window.epicareMotionStatus = function (st) {
+  if (st && st.available === false) { DEMO.source = "none"; demoStatusLine(); }
+};
+const toNative = (msg) => { try { window.ReactNativeWebView?.postMessage(JSON.stringify(msg)); } catch { /* hors app */ } };
+function onDeviceMotion(e) {
+  const a = e.accelerationIncludingGravity; if (!a || a.x == null) return;
+  window.epicareMotion([[performance.now(), a.x / 9.81, a.y / 9.81, a.z / 9.81]]);
+}
+
+function demoStart() {
+  if (DEMO.on) return;
+  Object.assign(DEMO, { on: true, buf: [], run: 0, state: "watch", gotSample: false });
+  if (window.ReactNativeWebView) { DEMO.source = "native"; toNative({ type: "motion", on: true }); }
+  else if ("DeviceMotionEvent" in window) {
+    DEMO.source = "browser";
+    // iPhone (Safari) : le capteur doit être autorisé par un toucher ; ailleurs on écoute directement
+    if (typeof DeviceMotionEvent.requestPermission === "function" && "ontouchstart" in window) DEMO.source = "needPermission";
+    else window.addEventListener("devicemotion", onDeviceMotion);
+  } else DEMO.source = "none";
+  DEMO.timer = setInterval(demoTick, DEMO_TICK_MS);
+  DEMO.drawTimer = setInterval(demoDraw, 100);
+  setTimeout(() => { if (DEMO.on && !DEMO.gotSample && DEMO.source !== "needPermission") { DEMO.source = "none"; demoStatusLine(); } }, 2000);
+}
+function demoStop() {
+  if (!DEMO.on) return;
+  DEMO.on = false;
+  clearInterval(DEMO.timer); clearInterval(DEMO.drawTimer); clearInterval(DEMO.simTimer); clearInterval(DEMO.countdown);
+  window.removeEventListener("devicemotion", onDeviceMotion);
+  toNative({ type: "motion", on: false });
+}
+
+/** Une évaluation toutes les 0,5 s sur les 2 dernières secondes. */
+function demoTick() {
+  const P = demoParams(), b = DEMO.buf;
+  if (b.length < 20) { DEMO.last = { rms: 0, hz: 0, pos: false }; return demoPaint(); }
+  const tEnd = b[b.length - 1].t, w = b.filter((s) => s.t >= tEnd - DEMO_WIN_S * 1000);
+  const dur = Math.max(0.5, (w[w.length - 1].t - w[0].t) / 1000);
+  // gravité retirée axe par axe ; l'axe qui varie le plus porte le rythme des secousses
+  const mean = [0, 1, 2].map((k) => w.reduce((a, s) => a + s.a[k], 0) / w.length);
+  const vari = [0, 1, 2].map((k) => w.reduce((a, s) => a + (s.a[k] - mean[k]) ** 2, 0) / w.length);
+  const rms = Math.sqrt(vari[0] + vari[1] + vari[2]);
+  const ax = vari.indexOf(Math.max(...vari));
+  const dyn = w.map((s) => s.a[ax] - mean[ax]);
+  DEMO.axis = ax;
+  // rythme : passages par zéro avec hystérésis (ignore le petit bruit du capteur)
+  let sign = 0, cross = 0; const hy = Math.max(0.08, rms * 0.3);
+  for (const v of dyn) { const sg = v > hy ? 1 : v < -hy ? -1 : 0; if (sg && sg !== sign) { if (sign) cross++; sign = sg; } }
+  const hz = cross / 2 / dur;
+  const pos = rms >= P.thr && hz >= P.fLo && hz <= P.fHi;
+  DEMO.last = { rms, hz, pos };
+  if (DEMO.state === "watch" || DEMO.state === "moving") {
+    // une courte pause dans les secousses ne remet pas tout à zéro (décroissance de 1 s par fenêtre calme)
+    DEMO.run = pos ? DEMO.run + DEMO_TICK_MS / 1000 : Math.max(0, DEMO.run - 1);
+    DEMO.state = DEMO.run > 0 ? "moving" : "watch";
+    if (DEMO.run >= P.need) demoAlert();
+  }
+  demoPaint();
+}
+
+function demoAlert() {
+  DEMO.state = "alert"; DEMO.alertAt = new Date(); DEMO.left = 10;
+  const me = profile(), who = me ? `${me.first} ${me.last}` : `Patient ${patient()?.id ?? ""}`.trim();
+  const cg = me?.cgName ? `${me.cgName}${me.cgRel ? ` (${me.cgRel.toLowerCase()})` : ""}` : "l'aidant";
+  DEMO.cg = cg;
+  toNative({ type: "vibrate" }); try { navigator.vibrate?.([500, 200, 500, 200, 900]); } catch { /* */ }
+  toNative({ type: "notify", tag: "alert", title: "⚠️ Crise convulsive probable",
+    body: `${who} · ${fmtTime(DEMO.alertAt)}. Ouvrez EpiCare et touchez « Je vais bien » pour annuler. Sinon ${cg} sera prévenu(e) dans 10 s.` });
+  clearInterval(DEMO.countdown);
+  DEMO.countdown = setInterval(() => {
+    DEMO.left--;
+    if (DEMO.left <= 0) {
+      clearInterval(DEMO.countdown); DEMO.state = "sent"; DEMO.log.unshift({ t: DEMO.alertAt, sent: true });
+      toNative({ type: "vibrate" }); toNative({ type: "dismiss", tag: "alert" });
+      // ce que recevrait le téléphone de l'aidant (ici affiché sur le même téléphone, pour la démo)
+      toNative({ type: "notify", tag: "caregiver", title: "🔔 EpiCare · Alerte aidant",
+        body: `${who} : crise convulsive probable détectée à ${fmtTime(DEMO.alertAt)}. Pas de réponse du patient. (démonstration)` });
+    }
+    demoPaint();
+  }, 1000);
+  demoPaint();
+}
+/** Ouvre l'application SMS avec le message d'alerte déjà rédigé pour l'aidant (le patient ou un témoin
+ *  n'a plus qu'à toucher « Envoyer »). Dans l'app native : expo-sms ; ailleurs : lien sms:. */
+function demoSms() {
+  const me = profile();
+  if (!me?.cgPhone) { openOnboarding(!!me); OB.step = 4; renderOnboarding(); return; }
+  const at = DEMO.alertAt || new Date();
+  const body = `EpiCare – ALERTE : crise convulsive probable chez ${me.first} ${me.last}, détectée à ${fmtTime(at)}. `
+    + `Pas de réponse du patient. Merci d'appeler ou de venir vérifier.`
+    + (me.notes ? ` À savoir : ${me.notes}.` : "")
+    + ` (Message de démonstration EpiCare)`;
+  const phone = me.cgPhone.replace(/[^\d+]/g, "");
+  if (window.ReactNativeWebView) toNative({ type: "sms", phone, body });
+  else location.href = `sms:${phone}${/iPhone|iPad/.test(navigator.userAgent) ? "&" : "?"}body=${encodeURIComponent(body)}`;
+}
+/** Résultat renvoyé par l'app native : "sent", "cancelled", "unknown" ou "unavailable". */
+window.epicareSmsResult = function (r) {
+  DEMO.sms = r;
+  if (DEMO.log[0]) DEMO.log[0].sms = r;
+  demoPaint();
+};
+const SMS_TXT = { sent: "SMS envoyé", cancelled: "SMS annulé", unknown: "SMS préparé", unavailable: "SMS indisponible sur cet appareil" };
+const smsLabel = () => { const me = profile(); return me?.cgName ? `Prévenir ${esc(me.cgName.split(" ")[0])} par SMS` : "Ajouter un aidant pour le SMS"; };
+
+function demoReset(cancelled) {
+  clearInterval(DEMO.countdown);
+  if (cancelled && DEMO.alertAt) { DEMO.log.unshift({ t: DEMO.alertAt, sent: false }); toNative({ type: "dismiss", tag: "alert" }); }
+  Object.assign(DEMO, { state: "watch", run: 0, alertAt: null, buf: [], sms: null });
+  demoPaint();
+}
+
+/** Simulation (PC sans capteur, ou pour répéter la démo) : 12 s de convulsions ou de marche. */
+function demoSimulate(kind) {
+  clearInterval(DEMO.simTimer);
+  const t0 = performance.now(), f = kind === "seizure" ? 4.2 : 1.9, amp = kind === "seizure" ? 1.3 : 0.22;
+  DEMO.simTimer = setInterval(() => {
+    const t = performance.now();
+    if ((t - t0) / 1000 > 12 || !DEMO.on) return clearInterval(DEMO.simTimer);
+    const batch = [];
+    for (let k = 0; k < 5; k++) {
+      const tt = t - (4 - k) * 20, ss = (tt - t0) / 1000;
+      batch.push([tt, 0.1, 0.1, 1 + amp * Math.sin(2 * Math.PI * f * ss) + (Math.random() - 0.5) * 0.12]);
+    }
+    window.epicareMotion(batch);
+  }, 100);
+}
+
+function demoStatusLine() {
+  const el = document.getElementById("demoSrc"); if (!el) return;
+  const S = {
+    native: [`${ico("watch", "sm")}Capteur du téléphone`, "good"],
+    browser: [`${ico("watch", "sm")}Capteur du navigateur`, "good"],
+    needPermission: [`${ico("info", "sm")}Autorisation requise`, "warn"],
+    none: [`${ico("info", "sm")}Pas de capteur : simulation`, "neutral"],
+  }[DEMO.source] || ["", "neutral"];
+  el.className = `badge ${S[1]}`; el.innerHTML = S[0];
+  const pb = document.getElementById("demoPerm"); if (pb) pb.hidden = DEMO.source !== "needPermission";
+}
+
+function renderDemo() {
+  const v = $("view-demo"); v.innerHTML = "";
+  const P = demoParams();
+  v.insertAdjacentHTML("beforeend", `
+    <button class="chip" id="demoBack" style="align-self:flex-start;margin-top:4px"><span class="ico sm" style="transform:rotate(90deg)">${svgIco("chevron")}</span><span>Détection</span></button>
+    <h1 class="page-title" style="margin-top:2px">Démo en direct</h1>
+    <p class="page-sub">Le téléphone remplace la montre : son accéléromètre alimente le détecteur de crises convulsives.</p>
+    <div class="notice" style="margin:0">${ico("info", "sm")}<span><b>Mode démonstration.</b> Rien n'est envoyé automatiquement : un SMS ne part que si vous touchez « Envoyer » dans l'application SMS.</span></div>
+    <div class="card" id="demoStatus"></div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">${ico("wave")}Mouvement · 10 s</div><span id="demoSrc" class="badge neutral"></span></div>
+      <canvas id="demoCanvas" style="width:100%;height:140px;display:block"></canvas>
+      <div class="legend"><span><i class="ln"></i>Intensité du mouvement</span><span><i class="sq" style="background:var(--warn);height:2px;border-radius:0"></i>Seuil d'alerte</span></div>
+      <button class="btn primary" id="demoPerm" style="margin-top:12px" hidden>${ico("watch")}Activer le capteur</button>
+    </div>
+    <div class="tiles" id="demoTiles"></div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">${ico("bolt")}Comment faire la démo</div></div>
+      <div class="list">
+        <div class="row"><div class="row-ico">1</div><div class="row-main"><div class="row-title">Tenez le téléphone comme une montre</div><div class="row-sub">Dans la main, ou attaché au poignet.</div></div></div>
+        <div class="row"><div class="row-ico">2</div><div class="row-main"><div class="row-title">Marchez, bougez normalement</div><div class="row-sub">Aucune alerte : le mouvement n'est ni assez fort ni assez rythmé.</div></div></div>
+        <div class="row"><div class="row-ico">3</div><div class="row-main"><div class="row-title">Secouez fort et en rythme ~${num(P.need, 0)} s</div><div class="row-sub">3 à 5 secousses par seconde, comme des convulsions : l'alerte se déclenche.</div></div></div>
+        <div class="row"><div class="row-ico">4</div><div class="row-main"><div class="row-title">« Je vais bien » annule l'alerte</div><div class="row-sub">Sinon l'aidant est prévenu après 10 s : notification, puis SMS prêt à envoyer.</div></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div><div class="card-title">${ico("sliders")}Simulation</div><div class="card-sub">Sans capteur (sur ordinateur), ou pour comparer</div></div></div>
+      <button class="btn ghost" id="simSeizure">${ico("bolt")}Simuler 12 s de convulsions</button>
+      <button class="btn ghost" id="simWalk">${ico("move")}Simuler 12 s de marche</button>
+    </div>
+    <div class="card" id="demoLog"></div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">${ico("brain")}Lien avec la prévision</div></div>
+      <p class="row-sub">Patient ${esc(patient()?.id ?? "—")} · décalage transmis par la branche 1 : <b>${signed(P.shift)}</b>. Le détecteur demande <b>${num(P.need, 1)} s</b> de secousses au-dessus de <b>${num(P.thr, 2)} g</b>${P.shift > 0.05 ? " : il est plus sensible car le risque du jour est élevé." : P.shift < -0.05 ? " : il est moins sensible car le risque du jour est bas, donc moins de fausses alertes." : "."}</p>
+      <p class="fine" style="margin-top:8px">Ce détecteur de démonstration applique des règles simples (intensité + rythme). Le détecteur de la branche 2 est un modèle appris sur SeizeIT2 ; en production, le signal viendrait de la montre.</p>
+    </div>`);
+  $("demoBack").onclick = () => show("detect");
+  $("simSeizure").onclick = () => demoSimulate("seizure");
+  $("simWalk").onclick = () => demoSimulate("walk");
+  $("demoPerm").onclick = async () => {
+    try { if ((await DeviceMotionEvent.requestPermission()) === "granted") { DEMO.source = "browser"; window.addEventListener("devicemotion", onDeviceMotion); } }
+    catch { DEMO.source = "none"; }
+    demoStatusLine();
+  };
+  demoStart();
+  demoStatusLine();
+  demoPaint();
+}
+
+function demoPaint() {
+  const st = $("demoStatus"); if (!st || !DEMO.on) return;
+  const P = demoParams(), L = DEMO.last, prog = Math.min(1, DEMO.run / P.need);
+  const ring = (frac, color) => { const r = 34, c = 2 * Math.PI * r;
+    return `<svg viewBox="0 0 84 84" width="84" height="84" style="flex:none"><circle cx="42" cy="42" r="${r}" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="8"/><circle cx="42" cy="42" r="${r}" fill="none" stroke="${color}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${(c * frac).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 42 42)"/></svg>`; };
+  if (DEMO.state === "alert") {
+    st.style.background = "rgba(255,90,90,.28)"; st.style.borderColor = "rgba(255,140,140,.6)";
+    st.innerHTML = `<div style="display:flex;gap:14px;align-items:center"><span class="wx" style="width:56px;height:56px"><svg viewBox="0 0 64 64" aria-hidden="true">${WX.storm}</svg></span><div><h3 style="font-size:20px">Crise convulsive probable</h3><p class="row-sub">Détectée à ${fmtTime(DEMO.alertAt)}. ${esc(DEMO.cg || "L'aidant")} sera prévenu(e) dans <b>${DEMO.left} s</b>.</p></div></div>
+      <button class="btn primary" id="demoOk" style="margin-top:14px">${ico("check")}Je vais bien, annuler</button>
+      <button class="btn ghost" id="demoSms">${ico("bell")}${smsLabel()} maintenant</button>`;
+    $("demoOk").onclick = () => demoReset(true);
+    $("demoSms").onclick = demoSms;
+  } else if (DEMO.state === "sent") {
+    st.style.background = "rgba(255,90,90,.22)"; st.style.borderColor = "rgba(255,140,140,.45)";
+    st.innerHTML = `<div style="display:flex;gap:14px;align-items:center"><div class="row-ico" style="width:56px;height:56px;border-radius:18px;background:var(--crit-bg);color:var(--crit-ink)">${ico("bell", "lg")}</div><div><h3 style="font-size:20px">${esc(profile()?.cgName || "Aidant")} prévenu(e)</h3><p class="row-sub">Notification « Alerte aidant » envoyée${profile()?.cgPhone ? ` (${esc(profile().cgPhone)})` : ""}, sur ce téléphone pour la démo, avec l'heure de la crise : ${fmtTime(DEMO.alertAt)}.</p></div></div>
+      ${DEMO.sms ? `<p style="margin-top:10px"><span class="badge ${DEMO.sms === "sent" ? "good" : "neutral"}">${ico(DEMO.sms === "sent" ? "check" : "info")}${SMS_TXT[DEMO.sms] || DEMO.sms}</span></p>` : ""}
+      <button class="btn primary" id="demoSms" style="margin-top:14px">${ico("bell")}${DEMO.sms === "sent" ? "Renvoyer le SMS" : smsLabel()}</button>
+      <button class="btn ghost" id="demoAgain">${ico("reset")}Recommencer la surveillance</button>`;
+    $("demoSms").onclick = demoSms;
+    $("demoAgain").onclick = () => demoReset(false);
+  } else {
+    const moving = DEMO.state === "moving";
+    st.style.background = ""; st.style.borderColor = "";
+    st.innerHTML = `<div style="display:flex;gap:14px;align-items:center">${ring(prog, moving ? "var(--warn)" : "var(--good)")}
+      <div><h3 style="font-size:19px">${moving ? "Mouvement suspect…" : "Surveillance active"}</h3>
+      <p class="row-sub">${moving ? `Secousses fortes et rythmées : ${num(DEMO.run, 1)} s sur ${num(P.need, 0)} s nécessaires.` : "Tout va bien. Les gestes du quotidien ne déclenchent pas d'alerte."}</p></div></div>`;
+  }
+  const t = $("demoTiles");
+  if (t) t.innerHTML = `
+    <div class="tile"><div class="k">${ico("bolt")}Intensité</div><div class="v">${num(L.rms, 2)}</div><div class="s">g · seuil ${num(P.thr, 2)}</div></div>
+    <div class="tile"><div class="k">${ico("wave")}Rythme</div><div class="v">${num(L.hz, 1)}</div><div class="s">Hz · cible 2,5–9</div></div>
+    <div class="tile"><div class="k">${ico("target")}Fenêtre</div><div class="v" style="font-size:19px;color:${L.pos ? "var(--warn)" : "var(--good)"}">${L.pos ? "Suspecte" : "Normale"}</div><div class="s">2 dernières s</div></div>`;
+  const lg = $("demoLog");
+  if (lg) lg.innerHTML = `<div class="card-head"><div class="card-title">${ico("bell")}Alertes de la démo</div></div><div class="list">${DEMO.log.length ? DEMO.log.slice(0, 6).map((a) =>
+    `<div class="row"><div class="row-ico">${ico(a.sent ? "bell" : "check")}</div><div class="row-main"><div class="row-title">${fmtTime(a.t)}</div><div class="row-sub">${a.sent ? `Aidant prévenu${a.sms ? ` · ${SMS_TXT[a.sms] || a.sms}` : ""}` : "Annulée par le patient"}</div></div><span class="badge ${a.sent ? "crit" : "good"}">${ico(a.sent ? "bolt" : "check")}${a.sent ? "Envoyée" : "Annulée"}</span></div>`).join("")
+    : `<div class="empty-line">Aucune alerte pour l'instant.</div>`}</div>`;
+}
+
+/** Trace les 10 dernières secondes : intensité (|a| − 1 g) et seuil. */
+function demoDraw() {
+  const cv = $("demoCanvas"); if (!cv || !DEMO.on) return;
+  const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+  if (!w || !h) return;
+  if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  const P = demoParams(), max = 2.5, mid = h / 2, y = (v) => mid - (Math.max(-max, Math.min(max, v)) / max) * (h / 2 - 4);
+  g.strokeStyle = "rgba(255,255,255,.14)"; g.lineWidth = 1; g.beginPath(); g.moveTo(0, mid); g.lineTo(w, mid); g.stroke();
+  // seuil RMS ramené en amplitude crête (≈ RMS × √2 pour une oscillation)
+  g.strokeStyle = "#ffcf5c"; g.setLineDash([4, 4]);
+  for (const s of [1, -1]) { g.beginPath(); g.moveTo(0, y(s * P.thr * 1.41)); g.lineTo(w, y(s * P.thr * 1.41)); g.stroke(); }
+  g.setLineDash([]);
+  const b = DEMO.buf; if (b.length < 2) return;
+  const tEnd = b[b.length - 1].t, t0 = tEnd - 10000, ax = DEMO.axis ?? 2;
+  const mu = b.reduce((a, s) => a + s.a[ax], 0) / b.length;   // axe le plus mobile, gravité retirée
+  g.strokeStyle = DEMO.last.pos ? "#ffcf5c" : "#ffffff"; g.lineWidth = 1.6; g.beginPath();
+  let started = false;
+  for (const s of b) { if (s.t < t0) continue; const x = ((s.t - t0) / 10000) * w, v = s.a[ax] - mu; if (started) g.lineTo(x, y(v)); else { g.moveTo(x, y(v)); started = true; } }
+  g.stroke();
+}
+
+/* ============================================================ profil du patient (création de compte)
+ * Au premier lancement, un parcours en étapes recueille l'identité, l'épilepsie, le traitement et les
+ * contacts. Le profil est enregistré UNIQUEMENT sur ce téléphone (stockage local de l'app), rien n'est
+ * envoyé. Il personnalise l'accueil (prénom) et l'alerte (nom de l'aidant). Modifiable depuis la
+ * puce du haut ; supprimable dans les Réglages. */
+const LS_PROFILE = "epicare.profile";
+const profile = () => { try { return JSON.parse(store.getItem(LS_PROFILE) || "null"); } catch { return null; } };
+const saveProfile = (p) => store.setItem(LS_PROFILE, JSON.stringify(p));
+function ageOf(dob) {
+  const d = dob && new Date(dob); if (!d || isNaN(d)) return null;
+  const n = new Date(); let a = n.getFullYear() - d.getFullYear();
+  if (n.getMonth() < d.getMonth() || (n.getMonth() === d.getMonth() && n.getDate() < d.getDate())) a--;
+  return a;
+}
+const bmiOf = (kg, cm) => (kg > 0 && cm > 0 ? kg / (cm / 100) ** 2 : null);
+
+const OB_OPTS = {
+  sex: [["f", "Femme"], ["m", "Homme"], ["x", "Autre / ne souhaite pas dire"]],
+  epi: [["focal", "Focale"], ["generalized", "Généralisée"], ["combined", "Focale et généralisée"], ["unknown", "Je ne sais pas"]],
+  seiz: [["tc", "Tonico-clonique (convulsions)"], ["absence", "Absence"], ["focal_aware", "Focale, consciente"], ["focal_impaired", "Focale, conscience altérée"], ["myoclonic", "Myoclonique"], ["atonic", "Atonique (chute)"], ["tonic", "Tonique"], ["unknown", "Je ne sais pas"]],
+  freq: [["daily", "Chaque jour"], ["weekly", "Chaque semaine"], ["monthly", "Chaque mois"], ["yearly", "Quelques fois par an"], ["free", "Plus de crise depuis 1 an"]],
+  trig: [["sleep", "Manque de sommeil"], ["stress", "Stress"], ["missed", "Oubli de traitement"], ["alcohol", "Alcool"], ["light", "Lumières clignotantes"], ["fever", "Fièvre / maladie"], ["period", "Règles"], ["meal", "Repas sauté"]],
+  blood: ["", "A+", "A−", "B+", "B−", "AB+", "AB−", "O+", "O−"],
+  watch: [["none", "Pas encore de montre"], ["e4", "Empatica E4 / EmbracePlus"], ["apple", "Apple Watch"], ["android", "Montre Android / Wear OS"], ["other", "Autre montre connectée"]],
+  rel: ["Mère", "Père", "Conjoint(e)", "Frère / sœur", "Enfant", "Ami(e)", "Aidant professionnel", "Autre"],
+};
+const lbl = (list, k) => (list.find((x) => x[0] === k) || [, "—"])[1];
+
+const OB_STEPS = [
+  { key: "welcome", title: "Bienvenue", icon: "sun" },
+  { key: "id", title: "Qui êtes-vous ?", icon: "user" },
+  { key: "epi", title: "Votre épilepsie", icon: "brain" },
+  { key: "care", title: "Traitement et santé", icon: "heart" },
+  { key: "contacts", title: "Vos contacts", icon: "bell" },
+  { key: "done", title: "C'est prêt", icon: "checkCircle" },
+];
+const OB = { step: 0, draft: null, editing: false };
+
+function openOnboarding(editing = false) {
+  OB.editing = editing;
+  OB.draft = JSON.parse(JSON.stringify(profile() || { meds: [{ name: "", dose: "", time: "" }], seizures: [], triggers: [] }));
+  if (!OB.draft.meds?.length) OB.draft.meds = [{ name: "", dose: "", time: "" }];
+  OB.step = editing ? 1 : 0;
+  $("onboard").hidden = false; document.body.classList.add("ob-open");
+  renderOnboarding();
+}
+function closeOnboarding() { $("onboard").hidden = true; document.body.classList.remove("ob-open"); }
+
+/* petits constructeurs de champs */
+const fText = (id, label, val, attrs = "") => `<label class="field"><span>${label}</span><input id="${id}" value="${esc(val ?? "")}" ${attrs}></label>`;
+const fSelect = (id, label, list, val) => `<label class="field"><span>${label}</span><select id="${id}"><option value="">Choisir…</option>${list.map((o) => { const [k, t] = Array.isArray(o) ? o : [o, o]; return k === "" ? "" : `<option value="${esc(k)}" ${k === val ? "selected" : ""}>${esc(t)}</option>`; }).join("")}</select></label>`;
+const fChips = (name, label, list, vals, single = false) => `<div class="field"><span>${label}</span><div class="chips" data-name="${name}" data-single="${single ? 1 : 0}">${list.map(([k, t]) => `<button type="button" class="pick ${(single ? vals === k : (vals || []).includes(k)) ? "on" : ""}" data-k="${k}">${esc(t)}</button>`).join("")}</div></div>`;
+
+function obStepHTML() {
+  const d = OB.draft, s = OB_STEPS[OB.step].key;
+  if (s === "welcome") return `
+    <div class="ob-hero">${wx("partSun")}<h1>Bienvenue sur EpiCare</h1>
+    <p>Votre « météo » des crises : chaque jour, EpiCare estime le risque à partir de votre montre et de vos rythmes, et peut prévenir un proche en cas de crise.</p></div>
+    <div class="card"><div class="list">
+      <div class="row"><div class="row-ico">${ico("user")}</div><div class="row-main"><div class="row-title">Créez votre profil</div><div class="row-sub">Environ 2 minutes. Seuls quelques champs sont obligatoires (*).</div></div></div>
+      <div class="row"><div class="row-ico">${ico("shield")}</div><div class="row-main"><div class="row-title">Vos données restent sur ce téléphone</div><div class="row-sub">Rien n'est envoyé sur Internet. Vous pouvez tout modifier ou supprimer.</div></div></div>
+      <div class="row"><div class="row-ico">${ico("info")}</div><div class="row-main"><div class="row-title">Outil de recherche</div><div class="row-sub">EpiCare ne remplace pas votre médecin et ne doit pas modifier votre traitement.</div></div></div>
+    </div></div>`;
+  if (s === "id") {
+    const age = ageOf(d.dob), bmi = bmiOf(+d.weight, +d.height);
+    return `<div class="card ob-form">
+      <div class="grid2">${fText("f_first", "Prénom *", d.first, 'autocomplete="given-name"')}${fText("f_last", "Nom *", d.last, 'autocomplete="family-name"')}</div>
+      ${fText("f_dob", "Date de naissance *", d.dob, `type="date" max="${new Date().toISOString().slice(0, 10)}"`)}
+      ${fChips("sex", "Sexe", OB_OPTS.sex, d.sex, true)}
+      <div class="grid2">${fText("f_weight", "Poids (kg)", d.weight, 'type="number" inputmode="decimal" min="2" max="300" step="0.1"')}${fText("f_height", "Taille (cm)", d.height, 'type="number" inputmode="numeric" min="40" max="250"')}</div>
+      <p class="fine" id="obCalc">${age != null ? `Âge : <b>${age} ans</b>` : ""}${bmi ? ` · IMC : <b>${num(bmi, 1)}</b>` : ""}</p>
+    </div>`;
+  }
+  if (s === "epi") return `<div class="card ob-form">
+      ${fChips("epiType", "Type d'épilepsie", OB_OPTS.epi, d.epiType, true)}
+      ${fChips("seizures", "Types de crises (plusieurs choix possibles)", OB_OPTS.seiz, d.seizures)}
+      ${fSelect("f_freq", "Fréquence des crises", OB_OPTS.freq, d.freq)}
+      <div class="grid2">${fText("f_diag", "Année du diagnostic", d.diagYear, `type="number" inputmode="numeric" min="1930" max="${new Date().getFullYear()}"`)}${fText("f_last_sz", "Dernière crise", d.lastSeizure, `type="date" max="${new Date().toISOString().slice(0, 10)}"`)}</div>
+      ${fChips("triggers", "Ce qui déclenche vos crises", OB_OPTS.trig, d.triggers)}
+    </div>`;
+  if (s === "care") return `<div class="card ob-form">
+      <div class="field"><span>Médicaments antiépileptiques</span>
+        <div id="meds">${d.meds.map((m, i) => `<div class="med" data-i="${i}">
+          <input class="m-name" placeholder="Nom (ex. lévétiracétam)" value="${esc(m.name)}">
+          <input class="m-dose" placeholder="Dose (ex. 500 mg)" value="${esc(m.dose)}">
+          <input class="m-time" placeholder="Horaire (ex. 8 h / 20 h)" value="${esc(m.time)}">
+          ${d.meds.length > 1 ? `<button type="button" class="m-del" data-i="${i}" aria-label="Retirer">✕</button>` : ""}</div>`).join("")}</div>
+        <button type="button" class="btn ghost" id="addMed" style="height:40px;margin-top:8px">+ Ajouter un médicament</button>
+      </div>
+      ${fText("f_allergy", "Allergies", d.allergies, 'placeholder="ex. pénicilline, aucune"')}
+      ${fText("f_other", "Autres maladies", d.otherConditions, 'placeholder="ex. migraine, asthme"')}
+      <div class="grid2">${fSelect("f_blood", "Groupe sanguin", OB_OPTS.blood, d.blood)}${fChips("rescue", "Traitement de secours", [["yes", "Oui"], ["no", "Non"]], d.rescue, true)}</div>
+      ${fText("f_notes", "À savoir en cas de crise", d.notes, 'placeholder="ex. me mettre sur le côté, appeler si > 5 min"')}
+    </div>`;
+  if (s === "contacts") return `<div class="card ob-form">
+      <div class="ob-sec">${ico("bell")}Personne à prévenir en cas de crise</div>
+      ${fText("f_cg_name", "Nom de l'aidant *", d.cgName)}
+      <div class="grid2">${fSelect("f_cg_rel", "Lien", OB_OPTS.rel, d.cgRel)}${fText("f_cg_phone", "Téléphone *", d.cgPhone, 'type="tel" inputmode="tel" placeholder="06 12 34 56 78"')}</div>
+      <div class="ob-sec">${ico("user")}Neurologue / médecin</div>
+      <div class="grid2">${fText("f_dr_name", "Nom", d.drName)}${fText("f_dr_phone", "Téléphone", d.drPhone, 'type="tel" inputmode="tel"')}</div>
+      <div class="ob-sec">${ico("watch")}Montre</div>
+      ${fSelect("f_watch", "Montre utilisée", OB_OPTS.watch, d.watch)}
+      <label class="consent"><input type="checkbox" id="f_consent" ${d.consent ? "checked" : ""}><span>J'accepte qu'EpiCare utilise ces informations sur ce téléphone pour estimer mon risque et prévenir mon aidant. *</span></label>
+    </div>`;
+  const age = ageOf(d.dob);
+  return `<div class="ob-hero">${wx("sun")}<h1>Bienvenue, ${esc(d.first)} !</h1>
+    <p>Votre profil est créé. Retrouvez-le à tout moment en touchant votre prénom en haut de l'écran.</p></div>
+    ${profileCard(d, age)}`;
+}
+
+function profileCard(d, age = ageOf(d.dob)) {
+  const meds = (d.meds || []).filter((m) => m.name);
+  return `<div class="card"><div class="card-head"><div class="card-title">${ico("user")}Mon profil</div></div><div class="list">
+    <div class="row"><div class="row-ico">${ico("user")}</div><div class="row-main"><div class="row-title">${esc(d.first)} ${esc(d.last)}</div><div class="row-sub">${age != null ? `${age} ans` : ""}${d.sex ? ` · ${lbl(OB_OPTS.sex, d.sex)}` : ""}${d.weight ? ` · ${esc(d.weight)} kg` : ""}${d.height ? ` · ${esc(d.height)} cm` : ""}${d.blood ? ` · groupe ${esc(d.blood)}` : ""}</div></div></div>
+    <div class="row"><div class="row-ico">${ico("brain")}</div><div class="row-main"><div class="row-title">Épilepsie ${d.epiType ? lbl(OB_OPTS.epi, d.epiType).toLowerCase() : ""}</div><div class="row-sub">${(d.seizures || []).map((k) => lbl(OB_OPTS.seiz, k)).join(", ") || "Types de crises non renseignés"}${d.freq ? ` · ${lbl(OB_OPTS.freq, d.freq).toLowerCase()}` : ""}</div></div></div>
+    <div class="row"><div class="row-ico">${ico("clock")}</div><div class="row-main"><div class="row-title">Traitement</div><div class="row-sub">${meds.length ? meds.map((m) => `${esc(m.name)}${m.dose ? ` ${esc(m.dose)}` : ""}${m.time ? ` (${esc(m.time)})` : ""}`).join(" · ") : "Non renseigné"}</div></div></div>
+    ${(d.triggers || []).length ? `<div class="row"><div class="row-ico">${ico("bolt")}</div><div class="row-main"><div class="row-title">Déclencheurs</div><div class="row-sub">${d.triggers.map((k) => lbl(OB_OPTS.trig, k)).join(", ")}</div></div></div>` : ""}
+    ${d.allergies ? `<div class="row"><div class="row-ico">${ico("alert")}</div><div class="row-main"><div class="row-title">Allergies</div><div class="row-sub">${esc(d.allergies)}</div></div></div>` : ""}
+    <div class="row"><div class="row-ico">${ico("bell")}</div><div class="row-main"><div class="row-title">Aidant : ${esc(d.cgName || "—")}${d.cgRel ? ` (${esc(d.cgRel.toLowerCase())})` : ""}</div><div class="row-sub">${esc(d.cgPhone || "")}</div></div></div>
+    ${d.drName ? `<div class="row"><div class="row-ico">${ico("shield")}</div><div class="row-main"><div class="row-title">Dr ${esc(d.drName)}</div><div class="row-sub">${esc(d.drPhone || "")}</div></div></div>` : ""}
+  </div></div>`;
+}
+
+function renderOnboarding() {
+  const st = OB_STEPS[OB.step], n = OB_STEPS.length - 2; // étapes de saisie : 1..4
+  const form = OB.step >= 1 && OB.step <= n;
+  $("onboard").innerHTML = `<div class="ob-wrap">
+    <div class="ob-top">
+      ${OB.step > 0 && OB.step <= n && !(OB.editing && OB.step === 1) ? `<button class="icon-btn" id="obPrev" aria-label="Retour"><span class="ico" style="transform:rotate(90deg)">${svgIco("chevron")}</span></button>` : OB.editing && OB.step <= n ? `<button class="icon-btn" id="obClose" aria-label="Fermer">✕</button>` : "<span></span>"}
+      ${form ? `<div class="ob-progress"><i style="width:${(OB.step / n) * 100}%"></i></div><span class="ob-count">${OB.step}/${n}</span>` : ""}
+    </div>
+    ${form ? `<h2 class="ob-title">${ico(st.icon)}${st.title}</h2>` : ""}
+    <div id="obBody">${obStepHTML()}</div>
+    <p class="ob-err" id="obErr" hidden></p>
+    <button class="btn primary ob-next" id="obNext">${OB.step === 0 ? "Créer mon profil" : OB.step === n ? (OB.editing ? "Enregistrer" : "Terminer") : OB.step > n ? "Accéder à ma météo" : "Continuer"}</button>
+    ${OB.step === 0 ? `<button class="btn ghost" id="obSkip" style="margin-top:8px">Explorer d'abord la démo</button>` : ""}
+  </div>`;
+  const ob = $("onboard"); ob.scrollTop = 0;
+  ob.querySelectorAll(".chips").forEach((c) => c.querySelectorAll(".pick").forEach((b) => (b.onclick = () => {
+    if (c.dataset.single === "1") { const was = b.classList.contains("on"); c.querySelectorAll(".pick").forEach((x) => x.classList.remove("on")); if (!was) b.classList.add("on"); }
+    else b.classList.toggle("on");
+  })));
+  const calc = () => { const el = $("obCalc"); if (!el) return; const a = ageOf($("f_dob").value), b = bmiOf(+$("f_weight").value, +$("f_height").value);
+    el.innerHTML = `${a != null && a >= 0 ? `Âge : <b>${a} ans</b>` : ""}${b ? ` · IMC : <b>${num(b, 1)}</b>` : ""}`; };
+  ["f_dob", "f_weight", "f_height"].forEach((id) => { const el = $(id); if (el) el.oninput = calc; });
+  const add = $("addMed"); if (add) add.onclick = () => { obRead(); OB.draft.meds.push({ name: "", dose: "", time: "" }); renderOnboarding(); };
+  ob.querySelectorAll(".m-del").forEach((b) => (b.onclick = () => { obRead(); OB.draft.meds.splice(+b.dataset.i, 1); renderOnboarding(); }));
+  const prev = $("obPrev"); if (prev) prev.onclick = () => { obRead(); OB.step--; renderOnboarding(); };
+  const cl = $("obClose"); if (cl) cl.onclick = closeOnboarding;
+  const sk = $("obSkip"); if (sk) sk.onclick = closeOnboarding;
+  $("obNext").onclick = obNext;
+}
+
+/** Lit les champs de l'étape courante dans le brouillon. */
+function obRead() {
+  const d = OB.draft, v = (id) => { const el = $(id); return el ? el.value.trim() : undefined; };
+  const set = (k, id) => { const x = v(id); if (x !== undefined) d[k] = x; };
+  set("first", "f_first"); set("last", "f_last"); set("dob", "f_dob"); set("weight", "f_weight"); set("height", "f_height");
+  set("freq", "f_freq"); set("diagYear", "f_diag"); set("lastSeizure", "f_last_sz");
+  set("allergies", "f_allergy"); set("otherConditions", "f_other"); set("blood", "f_blood"); set("notes", "f_notes");
+  set("cgName", "f_cg_name"); set("cgRel", "f_cg_rel"); set("cgPhone", "f_cg_phone"); set("drName", "f_dr_name"); set("drPhone", "f_dr_phone"); set("watch", "f_watch");
+  const c = $("f_consent"); if (c) d.consent = c.checked;
+  $("onboard").querySelectorAll(".chips").forEach((ch) => {
+    const on = [...ch.querySelectorAll(".pick.on")].map((b) => b.dataset.k);
+    d[ch.dataset.name] = ch.dataset.single === "1" ? (on[0] || "") : on;
+  });
+  const meds = $("meds"); if (meds) d.meds = [...meds.querySelectorAll(".med")].map((m) => ({ name: m.querySelector(".m-name").value.trim(), dose: m.querySelector(".m-dose").value.trim(), time: m.querySelector(".m-time").value.trim() }));
+}
+
+function obValidate() {
+  const d = OB.draft, s = OB_STEPS[OB.step].key;
+  if (s === "id") {
+    if (!d.first || !d.last) return "Indiquez votre prénom et votre nom.";
+    const a = ageOf(d.dob);
+    if (a == null || a < 0 || a > 120) return "Indiquez une date de naissance valide.";
+    if (d.weight && !(+d.weight >= 2 && +d.weight <= 300)) return "Le poids doit être entre 2 et 300 kg.";
+    if (d.height && !(+d.height >= 40 && +d.height <= 250)) return "La taille doit être entre 40 et 250 cm.";
+  }
+  if (s === "contacts") {
+    if (!d.cgName) return "Indiquez la personne à prévenir en cas de crise.";
+    if ((d.cgPhone || "").replace(/[^\d]/g, "").length < 8) return "Indiquez un numéro de téléphone valide pour l'aidant.";
+    if (!d.consent) return "Cochez la case d'accord pour continuer.";
+  }
+  return "";
+}
+
+function obNext() {
+  const n = OB_STEPS.length - 2;
+  if (OB.step > n) { closeOnboarding(); renderAll(); return; }
+  obRead();
+  const err = obValidate();
+  if (err) { const e = $("obErr"); e.textContent = err; e.hidden = false; e.scrollIntoView({ block: "center", behavior: "smooth" }); return; }
+  if (OB.step === n) {
+    OB.draft.updated = new Date().toISOString();
+    OB.draft.created ??= OB.draft.updated;
+    saveProfile(OB.draft);
+    if (OB.editing) { closeOnboarding(); renderAll(); return; }
+  }
+  OB.step++; renderOnboarding();
+}
+
 /* ============================================================ navigation, feuilles */
-const RENDER = { home: renderHome, trends: renderTrends, cycles: renderCycles, perf: renderPerf, detect: renderDetect };
+const RENDER = { home: renderHome, trends: renderTrends, cycles: renderCycles, perf: renderPerf, detect: renderDetect, demo: renderDemo };
 function show(view, push = true) {
   if (!RENDER[view]) view = "home";
   if (push && location.hash !== `#${view}`) history.pushState(null, "", `#${view}`);
+  if (view !== "demo") demoStop();
   state.view = view; hideTip();
-  document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.view === view));
+  const tabView = view === "demo" ? "detect" : view;
+  document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.view === tabView));
   document.querySelectorAll(".view").forEach((s) => (s.hidden = s.id !== `view-${view}`));
   RENDER[view]();
   window.scrollTo({ top: 0 });
 }
 function renderAll() {
   const p = patient();
-  $("patientLabel").textContent = p ? `Patient ${p.id}` : "—";
+  const me = profile();
+  $("patientLabel").textContent = me?.first || (p ? `Patient ${p.id}` : "—");
   $("synthNotice").hidden = !state.doc?.dataset?.synthetic;
   $("brandSub").textContent = b2() ? "Prévision et détection" : "Prévision du risque";
+  document.documentElement.dataset.mood = p?.current?.level in LEVELS ? p.current.level : "low";
+  updateThemeColor();
   RENDER[state.view]();
 }
 
@@ -737,20 +1270,26 @@ function openSheet(html) {
 function closeSheet() { $("sheet").hidden = true; $("sheetBackdrop").hidden = true; }
 
 function patientSheet() {
-  openSheet(`<h2>Patient</h2>${patients().map((p, i) => `
-    <button class="option ${i === state.patientIdx ? "on" : ""}" data-i="${i}"><div class="row-ico">${ico("user")}</div>
-    <div class="row-main"><div class="row-title">Patient ${esc(p.id)}</div><div class="row-sub">${num(p.summary?.days, 0)} jours · ${p.summary?.n_events ?? "?"} épisodes · risque ${(LEVELS[p.current?.level]?.label || "—").toLowerCase()}</div></div>
+  const me = profile();
+  openSheet(`<h2>${me ? `${esc(me.first)} ${esc(me.last)}` : "Profil"}</h2>
+    ${me ? profileCard(me) : `<div class="card"><div class="empty-hero" style="padding:8px"><h3>Pas encore de profil</h3><p>Créez-le pour personnaliser EpiCare.</p></div></div>`}
+    <button class="btn primary" id="editProfile" style="margin:12px 0 18px">${ico(me ? "sliders" : "user")}${me ? "Modifier mon profil" : "Créer mon profil"}</button>
+    <div class="section-label" style="margin:0 4px 10px">Données affichées (démonstration)</div>
+    ${patients().map((p, i) => `
+    <button class="option ${i === state.patientIdx ? "on" : ""}" data-i="${i}">
+    ${wx(wxFor(p.current?.level))}<div class="row-main"><div class="row-title">Patient ${esc(p.id)}</div><div class="row-sub">${num(p.summary?.days, 0)} jours · ${p.summary?.n_events ?? "?"} épisodes · risque ${(LEVELS[p.current?.level]?.label || "—").toLowerCase()}</div></div>
     ${i === state.patientIdx ? `<span class="check">${ico("check")}</span>` : ""}</button>`).join("")}`);
   $("sheetBody").querySelectorAll(".option").forEach((b) => (b.onclick = () => {
     state.patientIdx = +b.dataset.i; store.setItem(LS_PATIENT, state.patientIdx); closeSheet(); renderAll();
   }));
+  $("editProfile").onclick = () => { closeSheet(); openOnboarding(!!me); };
 }
 
 function settingsSheet() {
-  const d = state.doc || {}, theme = store.getItem(LS_THEME) || "auto";
+  const d = state.doc || {}, theme = store.getItem(LS_THEME) || "night";
   const gen = d.generated ? new Date(d.generated) : null;
   openSheet(`<h2>Réglages</h2>
-    <div class="card" style="margin-bottom:12px"><div class="card-title" style="margin-bottom:10px">Données</div>
+    <div class="card" style="margin-bottom:12px"><div class="card-title">Données</div>
       <dl class="kv">
         <dt>Source</dt><dd>${esc(state.source)}</dd>
         <dt>Jeu de données</dt><dd>${esc(d.dataset?.name || "—")}</dd>
@@ -765,23 +1304,35 @@ function settingsSheet() {
       </div>
       <p class="fine" style="margin-top:10px">Un fichier de la branche 2 importé après celui de la branche 1 est fusionné avec lui.</p>
     </div>
-    <div class="card" style="margin-bottom:12px"><div class="card-title" style="margin-bottom:10px">Apparence</div>
+    <div class="card" style="margin-bottom:12px"><div class="card-title">Ciel</div>
       <div class="seg" id="themeSeg" style="width:100%;display:grid;grid-template-columns:repeat(3,1fr)">
-        <button data-t="auto" class="${theme === "auto" ? "on" : ""}">Auto</button><button data-t="light" class="${theme === "light" ? "on" : ""}">Clair</button><button data-t="dark" class="${theme === "dark" ? "on" : ""}">Sombre</button>
+        <button data-t="night" class="${theme === "night" ? "on" : ""}">Nuit</button><button data-t="day" class="${theme === "day" ? "on" : ""}">Jour</button><button data-t="auto" class="${theme === "auto" ? "on" : ""}">Auto</button>
       </div>
+      <p class="fine" style="margin-top:8px">La couleur du ciel suit le niveau de risque : bleu calme, crépuscule pour la vigilance, orage pour un risque élevé.</p>
+    </div>
+    <div class="card" style="margin-bottom:12px"><div class="card-title">Mon profil</div>
+      <p class="fine" style="margin-bottom:10px">Enregistré uniquement sur ce téléphone.</p>
+      <button class="btn ghost" id="delProfile">${ico("reset")}Supprimer mon profil</button>
     </div>
     <p class="fine">EpiCare — prévision du risque de crise (branche 1) à partir d'une montre Empatica E4 et de l'historique des crises. Données : My Seizure Gauge (Mayo Clinic, CC BY 4.0). Outil de recherche, pas un dispositif médical.</p>`);
   $("importBtn").onclick = () => $("fileInput").click();
+  $("delProfile").onclick = () => { if (confirm("Supprimer votre profil de ce téléphone ?")) { store.removeItem(LS_PROFILE); closeSheet(); renderAll(); openOnboarding(false); } };
   const rb = $("resetBtn"); if (rb) rb.onclick = async () => { store.removeItem(LS_DOC); state.doc = await loadData(); state.patientIdx = 0; closeSheet(); renderAll(); };
   $("themeSeg").querySelectorAll("button").forEach((b) => (b.onclick = () => { setTheme(b.dataset.t); settingsSheet(); }));
 }
 
+/* Ciel : "night" (par défaut, foncé), "day" (lumineux) ou "auto" (jour de 7 h à 21 h). */
 function setTheme(t) {
+  if (!["night", "day", "auto"].includes(t)) t = "night";
   store.setItem(LS_THEME, t);
-  if (t === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.dataset.theme = t;
-  const dark = t === "dark" || (t === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
-  document.querySelector('meta[name="theme-color"]').setAttribute("content", dark ? "#0a0e15" : "#0B2A4A");
+  const sky = t === "auto" ? (isNight(new Date()) ? "night" : "day") : t;
+  if (sky === "day") document.documentElement.dataset.sky = "day"; else document.documentElement.removeAttribute("data-sky");
+  updateThemeColor();
   if (state.doc) RENDER[state.view]();
+}
+function updateThemeColor() {
+  const c = getComputedStyle(document.documentElement).getPropertyValue("--sky-a").trim() || "#0a1a3a";
+  document.querySelector('meta[name="theme-color"]').setAttribute("content", c);
 }
 
 $("fileInput").addEventListener("change", async (e) => {
@@ -801,14 +1352,15 @@ $("fileInput").addEventListener("change", async (e) => {
 /* ============================================================ démarrage */
 async function boot() {
   hydrateIcons();
-  setTheme(store.getItem(LS_THEME) || "auto");
-  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => setTheme(store.getItem(LS_THEME) || "auto"));
+  const LEGACY = { dark: "night", light: "day" };
+  const saved = store.getItem(LS_THEME);
+  setTheme(LEGACY[saved] || saved || "night");
   $("view-home").innerHTML = `<div class="loading"><div class="spinner"></div>Chargement des résultats…</div>`;
   document.querySelectorAll(".tab").forEach((t) => (t.onclick = () => show(t.dataset.view)));
   $("patientBtn").onclick = patientSheet;
   $("settingsBtn").onclick = settingsSheet;
   $("sheetBackdrop").onclick = closeSheet;
-  document.addEventListener("scroll", hideTip, { passive: true });
+  document.addEventListener("scroll", () => { hideTip(); document.querySelector(".topbar").classList.toggle("scrolled", window.scrollY > 8); }, { passive: true });
   let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => state.doc && RENDER[state.view](), 150); });
   state.doc = await loadData();
   state.patientIdx = Math.min(+(store.getItem(LS_PATIENT) || 0), Math.max(0, patients().length - 1));
@@ -816,6 +1368,7 @@ async function boot() {
   window.addEventListener("popstate", () => show(location.hash.slice(1) || "home", false));
   show(state.view, false);
   renderAll();
+  if (!profile()) openOnboarding(false);
   if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol) && !window.EPICARE_NATIVE) navigator.serviceWorker.register("sw.js").catch(() => {});
 }
 boot();
